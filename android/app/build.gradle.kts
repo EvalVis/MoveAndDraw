@@ -19,7 +19,7 @@ if (envFile.exists()) {
 val googleMapsApiKey = localProperties.getProperty("GOOGLE_MAPS_API_KEY") ?: ""
 
 android {
-    namespace = "com.example.move_and_draw"
+    namespace = "com.programmersdiary.move_and_draw"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -33,7 +33,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.move_and_draw"
+        applicationId = "com.programmersdiary.move_and_draw"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
