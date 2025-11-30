@@ -8,11 +8,10 @@ plugins {
 }
 
 val localProperties = Properties()
-val envFile = rootProject.file("../../.env")
-
+val envFile = File(rootProject.projectDir.parentFile, ".env")
 if (envFile.exists()) {
-    envFile.inputStream().use { stream ->
-        localProperties.load(stream)
+    envFile.reader(Charsets.UTF_8).use { reader ->
+        localProperties.load(reader)
     }
 }
 
