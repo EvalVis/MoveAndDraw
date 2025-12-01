@@ -17,10 +17,11 @@ class _MapScreenState extends State<MapScreen> {
   Position? _currentPosition;
   bool _isLoading = true;
   final _authService = GoogleAuthService();
-  final List<LatLng> _pathPoints = [];
+  List<LatLng> _currentPathPoints = [];
   final Set<Polyline> _polylines = {};
   bool _isDrawing = false;
   StreamSubscription<Position>? _positionStreamSubscription;
+  int _polylineIdCounter = 0;
 
   @override
   void initState() {
@@ -87,13 +88,13 @@ class _MapScreenState extends State<MapScreen> {
         final newPoint = LatLng(position.latitude, position.longitude);
         
         setState(() {
-          _pathPoints.add(newPoint);
+          _currentPathPoints.add(newPoint);
           
-          _polylines.clear();
+          _polylines.removeWhere((p) => p.polylineId.value == 'current');
           _polylines.add(
             Polyline(
-              polylineId: const PolylineId('path'),
-              points: _pathPoints,
+              polylineId: const PolylineId('current'),
+              points: List.from(_currentPathPoints),
               color: Colors.red,
               width: 5,
             ),
@@ -106,6 +107,24 @@ class _MapScreenState extends State<MapScreen> {
   void _toggleDrawing() {
     setState(() {
       _isDrawing = !_isDrawing;
+      
+      if (_isDrawing) {
+        _currentPathPoints = [];
+      } else {
+        if (_currentPathPoints.isNotEmpty) {
+          _polylines.removeWhere((p) => p.polylineId.value == 'current');
+          _polylines.add(
+            Polyline(
+              polylineId: PolylineId('path_$_polylineIdCounter'),
+              points: List.from(_currentPathPoints),
+              color: Colors.red,
+              width: 5,
+            ),
+          );
+          _polylineIdCounter++;
+          _currentPathPoints = [];
+        }
+      }
     });
   }
 
