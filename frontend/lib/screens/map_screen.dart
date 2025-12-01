@@ -74,42 +74,48 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _startLocationTracking() {
-    _positionStreamSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-      ),
-    ).listen((Position position) {
-      setState(() {
-        _currentPosition = position;
-      });
+    _positionStreamSubscription =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 5,
+          ),
+        ).listen((Position position) {
+          setState(() {
+            _currentPosition = position;
+          });
 
-      if (_isDrawing) {
-        final newPoint = LatLng(position.latitude, position.longitude);
-        
-        setState(() {
-          _currentPathPoints.add(newPoint);
-          
-          _polylines.removeWhere((p) => p.polylineId.value == 'current');
-          _polylines.add(
-            Polyline(
-              polylineId: const PolylineId('current'),
-              points: List.from(_currentPathPoints),
-              color: Colors.red,
-              width: 5,
-            ),
-          );
+          if (_isDrawing) {
+            final newPoint = LatLng(position.latitude, position.longitude);
+
+            setState(() {
+              _currentPathPoints.add(newPoint);
+
+              _polylines.removeWhere((p) => p.polylineId.value == 'current');
+              _polylines.add(
+                Polyline(
+                  polylineId: const PolylineId('current'),
+                  points: List.from(_currentPathPoints),
+                  color: Colors.red,
+                  width: 5,
+                ),
+              );
+            });
+          }
         });
-      }
-    });
   }
 
   void _toggleDrawing() {
     setState(() {
       _isDrawing = !_isDrawing;
-      
+
       if (_isDrawing) {
         _currentPathPoints = [];
+        if (_currentPosition != null) {
+          _currentPathPoints.add(
+            LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          );
+        }
       } else {
         if (_currentPathPoints.isNotEmpty) {
           _polylines.removeWhere((p) => p.polylineId.value == 'current');
@@ -201,6 +207,3 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 }
-
-
-
