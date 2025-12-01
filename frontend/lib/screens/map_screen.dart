@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../services/google_auth_service.dart';
 import '../screens/login_screen.dart';
 
@@ -22,6 +23,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _isDrawing = false;
   StreamSubscription<Position>? _positionStreamSubscription;
   int _polylineIdCounter = 0;
+  Color _selectedColor = Colors.red;
 
   @override
   void initState() {
@@ -96,7 +98,7 @@ class _MapScreenState extends State<MapScreen> {
                 Polyline(
                   polylineId: const PolylineId('current'),
                   points: List.from(_currentPathPoints),
-                  color: Colors.red,
+                  color: _selectedColor,
                   width: 5,
                 ),
               );
@@ -123,7 +125,7 @@ class _MapScreenState extends State<MapScreen> {
             Polyline(
               polylineId: PolylineId('path_$_polylineIdCounter'),
               points: List.from(_currentPathPoints),
-              color: Colors.red,
+              color: _selectedColor,
               width: 5,
             ),
           );
@@ -132,6 +134,35 @@ class _MapScreenState extends State<MapScreen> {
         }
       }
     });
+  }
+
+  void _showColorPicker() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Pick a color'),
+          content: SingleChildScrollView(
+            child: ColorPicker(
+              pickerColor: _selectedColor,
+              onColorChanged: (Color color) {
+                setState(() {
+                  _selectedColor = color;
+                });
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Done'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _handleSignOut() async {
@@ -148,14 +179,33 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: ElevatedButton.icon(
-          onPressed: _toggleDrawing,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _isDrawing ? Colors.red : Colors.green,
-            foregroundColor: Colors.white,
-          ),
-          icon: Icon(_isDrawing ? Icons.stop : Icons.play_arrow),
-          label: Text(_isDrawing ? 'Stop Drawing' : 'Start Drawing'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: _selectedColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+              ),
+              onPressed: _showColorPicker,
+              tooltip: 'Pick color',
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: _toggleDrawing,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isDrawing ? Colors.red : Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              icon: Icon(_isDrawing ? Icons.stop : Icons.play_arrow),
+              label: Text(_isDrawing ? 'Stop Drawing' : 'Start Drawing'),
+            ),
+          ],
         ),
         actions: [
           if (user != null)
