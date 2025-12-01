@@ -24,6 +24,7 @@ class _MapScreenState extends State<MapScreen> {
   StreamSubscription<Position>? _positionStreamSubscription;
   int _polylineIdCounter = 0;
   Color _selectedColor = Colors.red;
+  Color _currentSegmentColor = Colors.red;
 
   @override
   void initState() {
@@ -98,7 +99,7 @@ class _MapScreenState extends State<MapScreen> {
                 Polyline(
                   polylineId: const PolylineId('current'),
                   points: List.from(_currentPathPoints),
-                  color: _selectedColor,
+                  color: _currentSegmentColor,
                   width: 5,
                 ),
               );
@@ -107,12 +108,32 @@ class _MapScreenState extends State<MapScreen> {
         });
   }
 
+  void _finalizeCurrentSegment() {
+    if (_currentPathPoints.length >= 2) {
+      _polylines.removeWhere((p) => p.polylineId.value == 'current');
+      _polylines.add(
+        Polyline(
+          polylineId: PolylineId('path_$_polylineIdCounter'),
+          points: List.from(_currentPathPoints),
+          color: _currentSegmentColor,
+          width: 5,
+        ),
+      );
+      _polylineIdCounter++;
+
+      final lastPoint = _currentPathPoints.last;
+      _currentPathPoints = [lastPoint];
+      _currentSegmentColor = _selectedColor;
+    }
+  }
+
   void _toggleDrawing() {
     setState(() {
       _isDrawing = !_isDrawing;
 
       if (_isDrawing) {
         _currentPathPoints = [];
+        _currentSegmentColor = _selectedColor;
         if (_currentPosition != null) {
           _currentPathPoints.add(
             LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
@@ -125,7 +146,7 @@ class _MapScreenState extends State<MapScreen> {
             Polyline(
               polylineId: PolylineId('path_$_polylineIdCounter'),
               points: List.from(_currentPathPoints),
-              color: _selectedColor,
+              color: _currentSegmentColor,
               width: 5,
             ),
           );
@@ -148,6 +169,11 @@ class _MapScreenState extends State<MapScreen> {
               onColorChanged: (Color color) {
                 setState(() {
                   _selectedColor = color;
+                  if (_isDrawing && _currentPathPoints.length >= 2) {
+                    _finalizeCurrentSegment();
+                  } else if (_isDrawing) {
+                    _currentSegmentColor = color;
+                  }
                 });
               },
             ),
