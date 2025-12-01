@@ -16,11 +16,14 @@ class _MapScreenState extends State<MapScreen> {
   Position? _currentPosition;
   bool _isLoading = true;
   final _authService = GoogleAuthService();
+  final List<LatLng> _pathPoints = [];
+  final Set<Polyline> _polylines = {};
 
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
+    _startLocationTracking();
   }
 
   Future<void> _getCurrentLocation() async {
@@ -64,6 +67,32 @@ class _MapScreenState extends State<MapScreen> {
         ),
       ),
     );
+  }
+
+  void _startLocationTracking() {
+    Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      ),
+    ).listen((Position position) {
+      final newPoint = LatLng(position.latitude, position.longitude);
+      
+      setState(() {
+        _currentPosition = position;
+        _pathPoints.add(newPoint);
+        
+        _polylines.clear();
+        _polylines.add(
+          Polyline(
+            polylineId: const PolylineId('path'),
+            points: _pathPoints,
+            color: Colors.red,
+            width: 5,
+          ),
+        );
+      });
+    });
   }
 
   Future<void> _handleSignOut() async {
@@ -116,6 +145,7 @@ class _MapScreenState extends State<MapScreen> {
               myLocationEnabled: true,
               myLocationButtonEnabled: true,
               mapType: MapType.normal,
+              polylines: _polylines,
               onMapCreated: (GoogleMapController controller) {
                 _mapController = controller;
               },
@@ -129,5 +159,6 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 }
+
 
 
