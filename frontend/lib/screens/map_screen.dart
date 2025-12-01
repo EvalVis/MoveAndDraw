@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -18,6 +19,8 @@ class _MapScreenState extends State<MapScreen> {
   final _authService = GoogleAuthService();
   final List<LatLng> _pathPoints = [];
   final Set<Polyline> _polylines = {};
+  bool _isDrawing = false;
+  StreamSubscription<Position>? _positionStreamSubscription;
 
   @override
   void initState() {
@@ -70,28 +73,39 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _startLocationTracking() {
-    Geolocator.getPositionStream(
+    _positionStreamSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 5,
       ),
     ).listen((Position position) {
-      final newPoint = LatLng(position.latitude, position.longitude);
-      
       setState(() {
         _currentPosition = position;
-        _pathPoints.add(newPoint);
-        
-        _polylines.clear();
-        _polylines.add(
-          Polyline(
-            polylineId: const PolylineId('path'),
-            points: _pathPoints,
-            color: Colors.red,
-            width: 5,
-          ),
-        );
       });
+
+      if (_isDrawing) {
+        final newPoint = LatLng(position.latitude, position.longitude);
+        
+        setState(() {
+          _pathPoints.add(newPoint);
+          
+          _polylines.clear();
+          _polylines.add(
+            Polyline(
+              polylineId: const PolylineId('path'),
+              points: _pathPoints,
+              color: Colors.red,
+              width: 5,
+            ),
+          );
+        });
+      }
+    });
+  }
+
+  void _toggleDrawing() {
+    setState(() {
+      _isDrawing = !_isDrawing;
     });
   }
 
@@ -109,7 +123,15 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Move & Draw'),
+        title: ElevatedButton.icon(
+          onPressed: _toggleDrawing,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _isDrawing ? Colors.red : Colors.green,
+            foregroundColor: Colors.white,
+          ),
+          icon: Icon(_isDrawing ? Icons.stop : Icons.play_arrow),
+          label: Text(_isDrawing ? 'Stop Drawing' : 'Start Drawing'),
+        ),
         actions: [
           if (user != null)
             Padding(
@@ -155,6 +177,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
+    _positionStreamSubscription?.cancel();
     _mapController?.dispose();
     super.dispose();
   }
