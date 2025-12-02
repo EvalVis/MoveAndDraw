@@ -172,6 +172,9 @@ class _MapScreenState extends State<MapScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
+                final token = await _authService.getIdToken();
+                if (token == null) return;
+
                 final allPoints = <List<double>>[];
                 for (final polyline in _polylines) {
                   for (final point in polyline.points) {
@@ -180,9 +183,11 @@ class _MapScreenState extends State<MapScreen> {
                 }
                 await http.post(
                   Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/save'),
-                  headers: {'Content-Type': 'application/json'},
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer $token',
+                  },
                   body: jsonEncode({
-                    'owner': _authService.currentUser?.email ?? '',
                     'title': nameController.text,
                     'drawing': allPoints,
                   }),

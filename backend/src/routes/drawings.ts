@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express'
 import { Pool } from 'pg'
+import { OAuth2Client } from 'google-auth-library'
 
 const router = Router()
 let pool: Pool
+let oauthClient: OAuth2Client
 
 function getPool() {
   if (!pool) {
@@ -11,14 +13,42 @@ function getPool() {
   return pool
 }
 
+function getOAuthClient() {
+  if (!oauthClient) {
+    oauthClient = new OAuth2Client(process.env.GOOGLE_OAUTH2_SERVER_CLIENT_ID)
+  }
+  return oauthClient
+}
+
+async function verifyToken(token: string): Promise<string | null> {
+  const ticket = await getOAuthClient().verifyIdToken({
+    idToken: token,
+    audience: process.env.GOOGLE_OAUTH2_SERVER_CLIENT_ID,
+  })
+  const payload = ticket.getPayload()
+  return payload?.name ?? null
+}
+
 interface SaveDrawingBody {
-  owner: string
   title: string
   drawing: number[][]
 }
 
 router.post('/save', async (req: Request, res: Response) => {
-  const { owner, title, drawing } = req.body as SaveDrawingBody
+  const authHeader = req.headers.authorization
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Missing token' })
+    return
+  }
+
+  const token = authHeader.slice(7)
+  const owner = await verifyToken(token)
+  if (!owner) {
+    res.status(401).json({ error: 'Invalid token' })
+    return
+  }
+
+  const { title, drawing } = req.body as SaveDrawingBody
 
   const polygonPoints = drawing.map(([lng, lat]) => `${lng} ${lat}`).join(', ')
   const closedPolygon = `${polygonPoints}, ${drawing[0][0]} ${drawing[0][1]}`

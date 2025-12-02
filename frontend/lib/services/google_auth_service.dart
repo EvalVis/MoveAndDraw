@@ -43,4 +43,9 @@ class GoogleAuthService {
 
   GoogleSignInAccount? get currentUser => _currentUser;
   bool get isSignedIn => _currentUser != null;
+
+  Future<String?> getIdToken() async {
+    final authentication = await _currentUser?.authentication;
+    return authentication?.idToken;
+  }
 }
