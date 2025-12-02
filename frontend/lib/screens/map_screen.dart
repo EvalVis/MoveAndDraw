@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 import '../services/google_auth_service.dart';
 import '../screens/login_screen.dart';
 
@@ -168,7 +171,24 @@ class _MapScreenState extends State<MapScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {},
+              onPressed: () async {
+                final allPoints = <List<double>>[];
+                for (final polyline in _polylines) {
+                  for (final point in polyline.points) {
+                    allPoints.add([point.longitude, point.latitude]);
+                  }
+                }
+                await http.post(
+                  Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/save'),
+                  headers: {'Content-Type': 'application/json'},
+                  body: jsonEncode({
+                    'owner': _authService.currentUser?.email ?? '',
+                    'title': nameController.text,
+                    'drawing': allPoints,
+                  }),
+                );
+                if (context.mounted) Navigator.of(context).pop();
+              },
               child: const Text('Submit'),
             ),
           ],
