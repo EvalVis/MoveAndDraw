@@ -128,10 +128,11 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _toggleDrawing() {
-    setState(() {
-      _isDrawing = !_isDrawing;
-
-      if (_isDrawing) {
+    if (_isDrawing) {
+      _showSaveDrawingDialog();
+    } else {
+      setState(() {
+        _isDrawing = true;
         _currentPathPoints = [];
         _currentSegmentColor = _selectedColor;
         if (_currentPosition != null) {
@@ -139,7 +140,43 @@ class _MapScreenState extends State<MapScreen> {
             LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
           );
         }
-      } else {
+      });
+    }
+  }
+
+  void _showSaveDrawingDialog() {
+    final TextEditingController nameController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Save Drawing'),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(
+              labelText: 'Drawing Name',
+              hintText: 'Enter a name for your drawing',
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {},
+              child: const Text('Submit'),
+            ),
+          ],
+        );
+      },
+    ).then((_) {
+      setState(() {
+        _isDrawing = false;
         if (_currentPathPoints.isNotEmpty) {
           _polylines.removeWhere((p) => p.polylineId.value == 'current');
           _polylines.add(
@@ -153,7 +190,7 @@ class _MapScreenState extends State<MapScreen> {
           _polylineIdCounter++;
           _currentPathPoints = [];
         }
-      }
+      });
     });
   }
 
