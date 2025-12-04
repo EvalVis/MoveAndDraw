@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'services/google_auth_service.dart';
 import 'screens/login_screen.dart';
-import 'screens/map_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +20,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
-      home: authService.isSignedIn ? const MapScreen() : const LoginScreen(),
+      home: authService.isSignedIn ? const HomeScreen() : const LoginScreen(),
     );
   }
 }

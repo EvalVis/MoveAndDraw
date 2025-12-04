@@ -62,5 +62,37 @@ router.post('/save', async (req: Request, res: Response) => {
   res.status(201).json({ success: true })
 })
 
+router.get('/view', async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Missing token' })
+    return
+  }
+
+  const token = authHeader.slice(7)
+  const owner = await verifyToken(token)
+  if (!owner) {
+    res.status(401).json({ error: 'Invalid token' })
+    return
+  }
+
+  const result = await getPool().query(
+    `SELECT id, title, ST_AsGeoJSON(drawing) as drawing, created_at 
+     FROM drawings.drawings 
+     WHERE owner = $1 
+     ORDER BY created_at DESC`,
+    [owner]
+  )
+
+  const drawings = result.rows.map(row => ({
+    id: row.id,
+    title: row.title,
+    drawing: JSON.parse(row.drawing),
+    createdAt: row.created_at
+  }))
+
+  res.json(drawings)
+})
+
 export default router
 

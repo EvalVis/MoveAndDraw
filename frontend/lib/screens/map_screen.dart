@@ -7,7 +7,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../services/google_auth_service.dart';
-import '../screens/login_screen.dart';
+import 'login_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
