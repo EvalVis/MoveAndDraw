@@ -53,17 +53,17 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _drawings.isEmpty
-              ? const Center(child: Text('No drawings yet'))
-              : RefreshIndicator(
-                  onRefresh: _fetchDrawings,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _drawings.length,
-                    itemBuilder: (context, index) {
-                      return DrawingCard(drawing: _drawings[index]);
-                    },
-                  ),
-                ),
+          ? const Center(child: Text('No drawings yet'))
+          : RefreshIndicator(
+              onRefresh: _fetchDrawings,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _drawings.length,
+                itemBuilder: (context, index) {
+                  return DrawingCard(drawing: _drawings[index]);
+                },
+              ),
+            ),
     );
   }
 }
@@ -146,10 +146,7 @@ class DrawingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            height: 200,
-            child: DrawingMap(drawing: drawing),
-          ),
+          SizedBox(height: 200, child: DrawingMap(drawing: drawing)),
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -196,12 +193,14 @@ class _DrawingMapState extends State<DrawingMap> {
     final polylines = <Polyline>{};
     for (var i = 0; i < widget.drawing.segments.length; i++) {
       final segment = widget.drawing.segments[i];
-      polylines.add(Polyline(
-        polylineId: PolylineId('segment_${widget.drawing.id}_$i'),
-        points: segment.points,
-        color: segment.color,
-        width: 3,
-      ));
+      polylines.add(
+        Polyline(
+          polylineId: PolylineId('segment_${widget.drawing.id}_$i'),
+          points: segment.points,
+          color: segment.color,
+          width: 3,
+        ),
+      );
     }
 
     return GoogleMap(
@@ -217,7 +216,7 @@ class _DrawingMapState extends State<DrawingMap> {
       scrollGesturesEnabled: false,
       rotateGesturesEnabled: false,
       tiltGesturesEnabled: false,
-      zoomGesturesEnabled: false,
+      zoomGesturesEnabled: true,
       myLocationButtonEnabled: false,
       mapToolbarEnabled: false,
     );
