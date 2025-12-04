@@ -29,9 +29,14 @@ async function verifyToken(token: string): Promise<string | null> {
   return payload?.name ?? null
 }
 
+interface Segment {
+  points: number[][]
+  color: string
+}
+
 interface SaveDrawingBody {
   title: string
-  drawing: number[][]
+  segments: Segment[]
 }
 
 router.post('/save', async (req: Request, res: Response) => {
@@ -48,15 +53,16 @@ router.post('/save', async (req: Request, res: Response) => {
     return
   }
 
-  const { title, drawing } = req.body as SaveDrawingBody
+  const { title, segments } = req.body as SaveDrawingBody
 
-  const polygonPoints = drawing.map(([lng, lat]) => `${lng} ${lat}`).join(', ')
-  const closedPolygon = `${polygonPoints}, ${drawing[0][0]} ${drawing[0][1]}`
+  const allPoints = segments.flatMap(s => s.points)
+  const polygonPoints = allPoints.map(([lng, lat]) => `${lng} ${lat}`).join(', ')
+  const closedPolygon = `${polygonPoints}, ${allPoints[0][0]} ${allPoints[0][1]}`
   const wkt = `SRID=4326;MULTIPOLYGON(((${closedPolygon})))`
 
   await getPool().query(
-    `INSERT INTO drawings.drawings (owner, title, drawing) VALUES ($1, $2, ST_GeomFromEWKT($3))`,
-    [owner, title, wkt]
+    `INSERT INTO drawings.drawings (owner, title, drawing, segments) VALUES ($1, $2, ST_GeomFromEWKT($3), $4)`,
+    [owner, title, wkt, JSON.stringify(segments)]
   )
 
   res.status(201).json({ success: true })
@@ -77,7 +83,7 @@ router.get('/view', async (req: Request, res: Response) => {
   }
 
   const result = await getPool().query(
-    `SELECT id, title, ST_AsGeoJSON(drawing) as drawing, created_at 
+    `SELECT id, title, segments, created_at 
      FROM drawings.drawings 
      WHERE owner = $1 
      ORDER BY created_at DESC`,
@@ -87,7 +93,7 @@ router.get('/view', async (req: Request, res: Response) => {
   const drawings = result.rows.map(row => ({
     id: row.id,
     title: row.title,
-    drawing: JSON.parse(row.drawing),
+    segments: row.segments,
     createdAt: row.created_at
   }))
 

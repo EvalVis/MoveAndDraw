@@ -68,42 +68,58 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
   }
 }
 
+class DrawingSegment {
+  final List<LatLng> points;
+  final Color color;
+
+  DrawingSegment({required this.points, required this.color});
+
+  factory DrawingSegment.fromJson(Map<String, dynamic> json) {
+    final coords = json['points'] as List;
+    final points = coords
+        .map<LatLng>((c) => LatLng(c[1].toDouble(), c[0].toDouble()))
+        .toList();
+    final colorHex = json['color'] as String;
+    final colorValue = int.parse(colorHex.substring(1), radix: 16) + 0xFF000000;
+    return DrawingSegment(points: points, color: Color(colorValue));
+  }
+}
+
 class Drawing {
   final int id;
   final String title;
-  final List<LatLng> points;
+  final List<DrawingSegment> segments;
   final DateTime createdAt;
 
   Drawing({
     required this.id,
     required this.title,
-    required this.points,
+    required this.segments,
     required this.createdAt,
   });
 
   factory Drawing.fromJson(Map<String, dynamic> json) {
-    final geoJson = json['drawing'];
-    final coordinates = geoJson['coordinates'][0][0] as List;
-    final allPoints = coordinates
-        .map<LatLng>((coord) => LatLng(coord[1].toDouble(), coord[0].toDouble()))
+    final segmentsJson = json['segments'] as List;
+    final segments = segmentsJson
+        .map<DrawingSegment>((s) => DrawingSegment.fromJson(s))
         .toList();
-    final points = allPoints.length > 1 ? allPoints.sublist(0, allPoints.length - 1) : allPoints;
 
     return Drawing(
       id: json['id'],
       title: json['title'],
-      points: points,
+      segments: segments,
       createdAt: DateTime.parse(json['createdAt']),
     );
   }
 
   LatLngBounds getBounds() {
-    double minLat = points.first.latitude;
-    double maxLat = points.first.latitude;
-    double minLng = points.first.longitude;
-    double maxLng = points.first.longitude;
+    final allPoints = segments.expand((s) => s.points).toList();
+    double minLat = allPoints.first.latitude;
+    double maxLat = allPoints.first.latitude;
+    double minLng = allPoints.first.longitude;
+    double maxLng = allPoints.first.longitude;
 
-    for (final point in points) {
+    for (final point in allPoints) {
       if (point.latitude < minLat) minLat = point.latitude;
       if (point.latitude > maxLat) maxLat = point.latitude;
       if (point.longitude < minLng) minLng = point.longitude;
@@ -177,16 +193,20 @@ class _DrawingMapState extends State<DrawingMap> {
       (bounds.southwest.longitude + bounds.northeast.longitude) / 2,
     );
 
+    final polylines = <Polyline>{};
+    for (var i = 0; i < widget.drawing.segments.length; i++) {
+      final segment = widget.drawing.segments[i];
+      polylines.add(Polyline(
+        polylineId: PolylineId('segment_${widget.drawing.id}_$i'),
+        points: segment.points,
+        color: segment.color,
+        width: 3,
+      ));
+    }
+
     return GoogleMap(
       initialCameraPosition: CameraPosition(target: center, zoom: 15),
-      polylines: {
-        Polyline(
-          polylineId: PolylineId('drawing_${widget.drawing.id}'),
-          points: widget.drawing.points,
-          color: Colors.red,
-          width: 3,
-        ),
-      },
+      polylines: polylines,
       onMapCreated: (controller) {
         _controller = controller;
         Future.delayed(const Duration(milliseconds: 100), () {
@@ -209,4 +229,3 @@ class _DrawingMapState extends State<DrawingMap> {
     super.dispose();
   }
 }
-

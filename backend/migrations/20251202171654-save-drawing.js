@@ -13,7 +13,7 @@ exports.setup = function(options, seedLink) {
 exports.up = async function(db) {
   await db.runSql(`CREATE SCHEMA drawings;`);
 
-  await db.runSql(`CREATE EXTENSION postgis;`);
+  await db.runSql(`CREATE EXTENSION IF NOT EXISTS postgis;`);
 
   await db.runSql(`
     CREATE TABLE drawings.drawings (

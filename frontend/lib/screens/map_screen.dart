@@ -175,11 +175,13 @@ class _MapScreenState extends State<MapScreen> {
                 final token = await _authService.getIdToken();
                 if (token == null) return;
 
-                final allPoints = <List<double>>[];
+                final segments = <Map<String, dynamic>>[];
                 for (final polyline in _polylines) {
-                  for (final point in polyline.points) {
-                    allPoints.add([point.longitude, point.latitude]);
-                  }
+                  final points = polyline.points
+                      .map((p) => [p.longitude, p.latitude])
+                      .toList();
+                  final colorHex = '#${polyline.color.value.toRadixString(16).substring(2).toUpperCase()}';
+                  segments.add({'points': points, 'color': colorHex});
                 }
                 await http.post(
                   Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/save'),
@@ -189,7 +191,7 @@ class _MapScreenState extends State<MapScreen> {
                   },
                   body: jsonEncode({
                     'title': nameController.text,
-                    'drawing': allPoints,
+                    'segments': segments,
                   }),
                 );
                 if (context.mounted) Navigator.of(context).pop();
