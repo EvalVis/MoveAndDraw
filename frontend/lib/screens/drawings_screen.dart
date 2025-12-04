@@ -84,9 +84,10 @@ class Drawing {
   factory Drawing.fromJson(Map<String, dynamic> json) {
     final geoJson = json['drawing'];
     final coordinates = geoJson['coordinates'][0][0] as List;
-    final points = coordinates
+    final allPoints = coordinates
         .map<LatLng>((coord) => LatLng(coord[1].toDouble(), coord[0].toDouble()))
         .toList();
+    final points = allPoints.length > 1 ? allPoints.sublist(0, allPoints.length - 1) : allPoints;
 
     return Drawing(
       id: json['id'],
