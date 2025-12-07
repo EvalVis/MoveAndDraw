@@ -139,6 +139,29 @@ class Drawing {
   }
 }
 
+class Comment {
+  final int id;
+  final String username;
+  final String content;
+  final DateTime createdAt;
+
+  Comment({
+    required this.id,
+    required this.username,
+    required this.content,
+    required this.createdAt,
+  });
+
+  factory Comment.fromJson(Map<String, dynamic> json) {
+    return Comment(
+      id: json['id'],
+      username: json['username'],
+      content: json['content'],
+      createdAt: DateTime.parse(json['createdAt']),
+    );
+  }
+}
+
 class DrawingCard extends StatefulWidget {
   final Drawing drawing;
 
@@ -153,11 +176,35 @@ class _DrawingCardState extends State<DrawingCard> {
   final _commentController = TextEditingController();
   bool _isLiking = false;
   bool _isSendingComment = false;
+  List<Comment> _comments = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchComments();
+  }
 
   @override
   void dispose() {
     _commentController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchComments() async {
+    final token = await _authService.getIdToken();
+    if (token == null) return;
+
+    final response = await http.get(
+      Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/comments/view?drawingId=${widget.drawing.id}'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      setState(() {
+        _comments = data.map((c) => Comment.fromJson(c)).toList();
+      });
+    }
   }
 
   Future<void> _sendComment() async {
@@ -186,6 +233,7 @@ class _DrawingCardState extends State<DrawingCard> {
 
     if (response.statusCode == 201) {
       _commentController.clear();
+      _fetchComments();
     }
     setState(() => _isSendingComment = false);
   }
@@ -285,6 +333,25 @@ class _DrawingCardState extends State<DrawingCard> {
                     ),
                   ],
                 ),
+                if (_comments.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  ..._comments.map((comment) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          comment.username,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(comment.content),
+                      ],
+                    ),
+                  )),
+                ],
               ],
             ),
           ),

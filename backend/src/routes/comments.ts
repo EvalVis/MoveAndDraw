@@ -64,5 +64,36 @@ router.post('/save', async (req: Request, res: Response) => {
   })
 })
 
+router.get('/view', async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Missing token' })
+    return
+  }
+
+  const token = authHeader.slice(7)
+  const username = await verifyToken(token)
+  if (!username) {
+    res.status(401).json({ error: 'Invalid token' })
+    return
+  }
+
+  const drawingId = req.query.drawingId
+
+  const result = await getPool().query(
+    `SELECT id, username, content, created_at FROM drawings.comments WHERE drawing_id = $1 ORDER BY created_at DESC`,
+    [drawingId]
+  )
+
+  const comments = result.rows.map(row => ({
+    id: row.id,
+    username: row.username,
+    content: row.content,
+    createdAt: row.created_at
+  }))
+
+  res.json(comments)
+})
+
 export default router
 
