@@ -24,6 +24,7 @@ class _MapScreenState extends State<MapScreen> {
   List<LatLng> _currentPathPoints = [];
   final Set<Polyline> _polylines = {};
   bool _isDrawing = false;
+  bool _isPaused = false;
   StreamSubscription<Position>? _positionStreamSubscription;
   int _polylineIdCounter = 0;
   Color _selectedColor = Colors.red;
@@ -91,7 +92,7 @@ class _MapScreenState extends State<MapScreen> {
             _currentPosition = position;
           });
 
-          if (_isDrawing) {
+          if (_isDrawing && !_isPaused) {
             final newPoint = LatLng(position.latitude, position.longitude);
 
             setState(() {
@@ -130,12 +131,23 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  void _toggleDrawing() {
-    if (_isDrawing) {
-      _showSaveDrawingDialog();
-    } else {
-      setState(() {
-        _isDrawing = true;
+  void _startDrawing() {
+    setState(() {
+      _isDrawing = true;
+      _isPaused = false;
+      _currentPathPoints = [];
+      _currentSegmentColor = _selectedColor;
+      if (_currentPosition != null) {
+        _currentPathPoints.add(
+          LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        );
+      }
+    });
+  }
+
+  void _togglePause() {
+    setState(() {
+      if (_isPaused) {
         _currentPathPoints = [];
         _currentSegmentColor = _selectedColor;
         if (_currentPosition != null) {
@@ -143,8 +155,15 @@ class _MapScreenState extends State<MapScreen> {
             LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
           );
         }
-      });
-    }
+      } else {
+        _finalizeCurrentSegment();
+      }
+      _isPaused = !_isPaused;
+    });
+  }
+
+  void _stopDrawing() {
+    _showSaveDrawingDialog();
   }
 
   void _showSaveDrawingDialog() {
@@ -180,7 +199,8 @@ class _MapScreenState extends State<MapScreen> {
                   final points = polyline.points
                       .map((p) => [p.longitude, p.latitude])
                       .toList();
-                  final colorHex = '#${polyline.color.value.toRadixString(16).substring(2).toUpperCase()}';
+                  final colorHex =
+                      '#${polyline.color.value.toRadixString(16).substring(2).toUpperCase()}';
                   segments.add({'points': points, 'color': colorHex});
                 }
                 await http.post(
@@ -204,6 +224,7 @@ class _MapScreenState extends State<MapScreen> {
     ).then((_) {
       setState(() {
         _isDrawing = false;
+        _isPaused = false;
         if (_currentPathPoints.isNotEmpty) {
           _polylines.removeWhere((p) => p.polylineId.value == 'current');
           _polylines.add(
@@ -286,15 +307,37 @@ class _MapScreenState extends State<MapScreen> {
               tooltip: 'Pick color',
             ),
             const SizedBox(width: 8),
-            ElevatedButton.icon(
-              onPressed: _toggleDrawing,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _isDrawing ? Colors.red : Colors.green,
-                foregroundColor: Colors.white,
+            if (!_isDrawing)
+              ElevatedButton.icon(
+                onPressed: _startDrawing,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Start Drawing'),
+              )
+            else ...[
+              ElevatedButton.icon(
+                onPressed: _togglePause,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isPaused ? Colors.green : Colors.orange,
+                  foregroundColor: Colors.white,
+                ),
+                icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause),
+                label: Text(_isPaused ? 'Continue' : 'Pause'),
               ),
-              icon: Icon(_isDrawing ? Icons.stop : Icons.play_arrow),
-              label: Text(_isDrawing ? 'Stop Drawing' : 'Start Drawing'),
-            ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _stopDrawing,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.stop),
+                label: const Text('Stop'),
+              ),
+            ],
           ],
         ),
         actions: [
