@@ -87,7 +87,6 @@ class DrawingSegment {
 
 class Drawing {
   final int id;
-  final String drawingId;
   final String title;
   final List<DrawingSegment> segments;
   int likeCount;
@@ -95,7 +94,6 @@ class Drawing {
 
   Drawing({
     required this.id,
-    required this.drawingId,
     required this.title,
     required this.segments,
     required this.likeCount,
@@ -110,7 +108,6 @@ class Drawing {
 
     return Drawing(
       id: json['id'],
-      drawingId: json['drawingId'],
       title: json['title'],
       segments: segments,
       likeCount: json['likeCount'] ?? 0,
@@ -163,7 +160,7 @@ class _DrawingCardState extends State<DrawingCard> {
     }
 
     final response = await http.post(
-      Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/like/${widget.drawing.drawingId}'),
+      Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/like/${widget.drawing.id}'),
       headers: {'Authorization': 'Bearer $token'},
     );
 

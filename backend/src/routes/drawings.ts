@@ -55,17 +55,12 @@ router.post('/save', async (req: Request, res: Response) => {
 
   const { title, segments } = req.body as SaveDrawingBody
 
-  const allPoints = segments.flatMap(s => s.points)
-  const polygonPoints = allPoints.map(([lng, lat]) => `${lng} ${lat}`).join(', ')
-  const closedPolygon = `${polygonPoints}, ${allPoints[0][0]} ${allPoints[0][1]}`
-  const wkt = `SRID=4326;MULTIPOLYGON(((${closedPolygon})))`
-
   const result = await getPool().query(
-    `INSERT INTO drawings.drawings (owner, title, drawing, segments) VALUES ($1, $2, ST_GeomFromEWKT($3), $4) RETURNING drawing_id`,
-    [owner, title, wkt, JSON.stringify(segments)]
+    `INSERT INTO drawings.drawings (owner, title, segments) VALUES ($1, $2, $3) RETURNING id`,
+    [owner, title, JSON.stringify(segments)]
   )
 
-  const drawingId = result.rows[0].drawing_id
+  const drawingId = result.rows[0].id
   await getPool().query(
     `INSERT INTO drawings.likes (drawing_id, like_count) VALUES ($1, 0)`,
     [drawingId]
@@ -89,9 +84,9 @@ router.get('/view', async (req: Request, res: Response) => {
   }
 
   const result = await getPool().query(
-    `SELECT d.id, d.drawing_id, d.title, d.segments, d.created_at, COALESCE(l.like_count, 0) as like_count
+    `SELECT d.id, d.title, d.segments, d.created_at, COALESCE(l.like_count, 0) as like_count
      FROM drawings.drawings d
-     LEFT JOIN drawings.likes l ON d.drawing_id = l.drawing_id
+     LEFT JOIN drawings.likes l ON d.id = l.drawing_id
      WHERE d.owner = $1 
      ORDER BY d.created_at DESC`,
     [owner]
@@ -99,7 +94,6 @@ router.get('/view', async (req: Request, res: Response) => {
 
   const drawings = result.rows.map(row => ({
     id: row.id,
-    drawingId: row.drawing_id,
     title: row.title,
     segments: row.segments,
     likeCount: row.like_count,
@@ -109,7 +103,7 @@ router.get('/view', async (req: Request, res: Response) => {
   res.json(drawings)
 })
 
-router.post('/like/:drawingId', async (req: Request, res: Response) => {
+router.post('/like/:id', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Missing token' })
@@ -123,11 +117,11 @@ router.post('/like/:drawingId', async (req: Request, res: Response) => {
     return
   }
 
-  const { drawingId } = req.params
+  const { id } = req.params
 
   const result = await getPool().query(
     `UPDATE drawings.likes SET like_count = like_count + 1 WHERE drawing_id = $1 RETURNING like_count`,
-    [drawingId]
+    [id]
   )
 
   if (result.rowCount === 0) {

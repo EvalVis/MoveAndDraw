@@ -13,26 +13,26 @@ exports.setup = function(options, seedLink) {
 exports.up = async function(db) {
   await db.runSql(`CREATE SCHEMA drawings;`);
 
-  await db.runSql(`CREATE EXTENSION IF NOT EXISTS postgis;`);
-
   await db.runSql(`
     CREATE TABLE drawings.drawings (
       id SERIAL PRIMARY KEY,
       owner VARCHAR(100) NOT NULL,
       title VARCHAR(255),
-      drawing geometry(MultiPolygon, 4326) NOT NULL,
+      segments JSONB,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
   await db.runSql(`
-    CREATE INDEX idx_drawings_drawing
-    ON drawings.drawings
-    USING GIST (drawing);
+    CREATE TABLE drawings.likes (
+      drawing_id INTEGER PRIMARY KEY REFERENCES drawings.drawings(id) ON DELETE CASCADE,
+      like_count INTEGER NOT NULL DEFAULT 0
+    );
   `);
 };
 
 exports.down = async function(db) {
+  await db.runSql(`DROP TABLE drawings.likes;`);
   await db.runSql(`DROP TABLE drawings.drawings;`);
   await db.runSql(`DROP SCHEMA drawings CASCADE;`);
 };
