@@ -87,14 +87,18 @@ class DrawingSegment {
 
 class Drawing {
   final int id;
+  final String drawingId;
   final String title;
   final List<DrawingSegment> segments;
+  int likeCount;
   final DateTime createdAt;
 
   Drawing({
     required this.id,
+    required this.drawingId,
     required this.title,
     required this.segments,
+    required this.likeCount,
     required this.createdAt,
   });
 
@@ -106,8 +110,10 @@ class Drawing {
 
     return Drawing(
       id: json['id'],
+      drawingId: json['drawingId'],
       title: json['title'],
       segments: segments,
+      likeCount: json['likeCount'] ?? 0,
       createdAt: DateTime.parse(json['createdAt']),
     );
   }
@@ -133,10 +139,42 @@ class Drawing {
   }
 }
 
-class DrawingCard extends StatelessWidget {
+class DrawingCard extends StatefulWidget {
   final Drawing drawing;
 
   const DrawingCard({super.key, required this.drawing});
+
+  @override
+  State<DrawingCard> createState() => _DrawingCardState();
+}
+
+class _DrawingCardState extends State<DrawingCard> {
+  final _authService = GoogleAuthService();
+  bool _isLiking = false;
+
+  Future<void> _likeDrawing() async {
+    if (_isLiking) return;
+    setState(() => _isLiking = true);
+
+    final token = await _authService.getIdToken();
+    if (token == null) {
+      setState(() => _isLiking = false);
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/like/${widget.drawing.drawingId}'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      setState(() {
+        widget.drawing.likeCount = data['likeCount'];
+      });
+    }
+    setState(() => _isLiking = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,20 +184,38 @@ class DrawingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 200, child: DrawingMap(drawing: drawing)),
+          SizedBox(height: 200, child: DrawingMap(drawing: widget.drawing)),
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  drawing.title,
+                  widget.drawing.title,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '${drawing.createdAt.day}/${drawing.createdAt.month}/${drawing.createdAt.year}',
-                  style: Theme.of(context).textTheme.bodySmall,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${widget.drawing.createdAt.day}/${widget.drawing.createdAt.month}/${widget.drawing.createdAt.year}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: _isLiking ? null : _likeDrawing,
+                          icon: const Icon(Icons.favorite_border),
+                          color: Colors.red,
+                        ),
+                        Text(
+                          '${widget.drawing.likeCount}',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ],
             ),
