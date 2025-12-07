@@ -150,7 +150,45 @@ class DrawingCard extends StatefulWidget {
 
 class _DrawingCardState extends State<DrawingCard> {
   final _authService = GoogleAuthService();
+  final _commentController = TextEditingController();
   bool _isLiking = false;
+  bool _isSendingComment = false;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendComment() async {
+    final content = _commentController.text.trim();
+    if (content.isEmpty || _isSendingComment) return;
+
+    setState(() => _isSendingComment = true);
+
+    final token = await _authService.getIdToken();
+    if (token == null) {
+      setState(() => _isSendingComment = false);
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/comments/save'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'drawingId': widget.drawing.id,
+        'content': content,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      _commentController.clear();
+    }
+    setState(() => _isSendingComment = false);
+  }
 
   Future<void> _toggleLike() async {
     if (_isLiking) return;
@@ -217,6 +255,33 @@ class _DrawingCardState extends State<DrawingCard> {
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _commentController,
+                        decoration: const InputDecoration(
+                          hintText: 'Add a comment...',
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _isSendingComment ? null : _sendComment,
+                      icon: _isSendingComment
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send),
                     ),
                   ],
                 ),

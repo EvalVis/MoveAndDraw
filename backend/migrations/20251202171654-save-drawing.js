@@ -30,9 +30,20 @@ exports.up = async function(db) {
       PRIMARY KEY (drawing_id, user_id)
     );
   `);
+
+  await db.runSql(`
+    CREATE TABLE drawings.comments (
+      id SERIAL PRIMARY KEY,
+      drawing_id INTEGER REFERENCES drawings.drawings(id) ON DELETE CASCADE,
+      username VARCHAR(100) NOT NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 };
 
 exports.down = async function(db) {
+  await db.runSql(`DROP TABLE drawings.comments;`);
   await db.runSql(`DROP TABLE drawings.likes;`);
   await db.runSql(`DROP TABLE drawings.drawings;`);
   await db.runSql(`DROP SCHEMA drawings CASCADE;`);
