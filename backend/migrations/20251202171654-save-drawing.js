@@ -25,8 +25,9 @@ exports.up = async function(db) {
 
   await db.runSql(`
     CREATE TABLE drawings.likes (
-      drawing_id INTEGER PRIMARY KEY REFERENCES drawings.drawings(id) ON DELETE CASCADE,
-      like_count INTEGER NOT NULL DEFAULT 0
+      drawing_id INTEGER REFERENCES drawings.drawings(id) ON DELETE CASCADE,
+      user_id VARCHAR(255) NOT NULL,
+      PRIMARY KEY (drawing_id, user_id)
     );
   `);
 };

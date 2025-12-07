@@ -90,6 +90,7 @@ class Drawing {
   final String title;
   final List<DrawingSegment> segments;
   int likeCount;
+  bool isLiked;
   final DateTime createdAt;
 
   Drawing({
@@ -97,6 +98,7 @@ class Drawing {
     required this.title,
     required this.segments,
     required this.likeCount,
+    required this.isLiked,
     required this.createdAt,
   });
 
@@ -111,6 +113,7 @@ class Drawing {
       title: json['title'],
       segments: segments,
       likeCount: json['likeCount'] ?? 0,
+      isLiked: json['isLiked'] ?? false,
       createdAt: DateTime.parse(json['createdAt']),
     );
   }
@@ -149,7 +152,7 @@ class _DrawingCardState extends State<DrawingCard> {
   final _authService = GoogleAuthService();
   bool _isLiking = false;
 
-  Future<void> _likeDrawing() async {
+  Future<void> _toggleLike() async {
     if (_isLiking) return;
     setState(() => _isLiking = true);
 
@@ -168,6 +171,7 @@ class _DrawingCardState extends State<DrawingCard> {
       final data = jsonDecode(response.body);
       setState(() {
         widget.drawing.likeCount = data['likeCount'];
+        widget.drawing.isLiked = data['isLiked'];
       });
     }
     setState(() => _isLiking = false);
@@ -202,8 +206,10 @@ class _DrawingCardState extends State<DrawingCard> {
                     Row(
                       children: [
                         IconButton(
-                          onPressed: _isLiking ? null : _likeDrawing,
-                          icon: const Icon(Icons.favorite_border),
+                          onPressed: _isLiking ? null : _toggleLike,
+                          icon: Icon(
+                            widget.drawing.isLiked ? Icons.favorite : Icons.favorite_border,
+                          ),
                           color: Colors.red,
                         ),
                         Text(

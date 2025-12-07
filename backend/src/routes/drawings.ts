@@ -20,13 +20,19 @@ function getOAuthClient() {
   return oauthClient
 }
 
-async function verifyToken(token: string): Promise<string | null> {
+interface TokenPayload {
+  name: string
+  userId: string
+}
+
+async function verifyToken(token: string): Promise<TokenPayload | null> {
   const ticket = await getOAuthClient().verifyIdToken({
     idToken: token,
     audience: process.env.GOOGLE_OAUTH2_SERVER_CLIENT_ID,
   })
   const payload = ticket.getPayload()
-  return payload?.name ?? null
+  if (!payload?.name || !payload?.sub) return null
+  return { name: payload.name, userId: payload.sub }
 }
 
 interface Segment {
@@ -47,23 +53,17 @@ router.post('/save', async (req: Request, res: Response) => {
   }
 
   const token = authHeader.slice(7)
-  const owner = await verifyToken(token)
-  if (!owner) {
+  const user = await verifyToken(token)
+  if (!user) {
     res.status(401).json({ error: 'Invalid token' })
     return
   }
 
   const { title, segments } = req.body as SaveDrawingBody
 
-  const result = await getPool().query(
-    `INSERT INTO drawings.drawings (owner, title, segments) VALUES ($1, $2, $3) RETURNING id`,
-    [owner, title, JSON.stringify(segments)]
-  )
-
-  const drawingId = result.rows[0].id
   await getPool().query(
-    `INSERT INTO drawings.likes (drawing_id, like_count) VALUES ($1, 0)`,
-    [drawingId]
+    `INSERT INTO drawings.drawings (owner, title, segments) VALUES ($1, $2, $3)`,
+    [user.name, title, JSON.stringify(segments)]
   )
 
   res.status(201).json({ success: true })
@@ -77,26 +77,30 @@ router.get('/view', async (req: Request, res: Response) => {
   }
 
   const token = authHeader.slice(7)
-  const owner = await verifyToken(token)
-  if (!owner) {
+  const user = await verifyToken(token)
+  if (!user) {
     res.status(401).json({ error: 'Invalid token' })
     return
   }
 
   const result = await getPool().query(
-    `SELECT d.id, d.title, d.segments, d.created_at, COALESCE(l.like_count, 0) as like_count
+    `SELECT d.id, d.title, d.segments, d.created_at,
+            COUNT(l.user_id) as like_count,
+            EXISTS(SELECT 1 FROM drawings.likes WHERE drawing_id = d.id AND user_id = $2) as is_liked
      FROM drawings.drawings d
      LEFT JOIN drawings.likes l ON d.id = l.drawing_id
      WHERE d.owner = $1 
+     GROUP BY d.id
      ORDER BY d.created_at DESC`,
-    [owner]
+    [user.name, user.userId]
   )
 
   const drawings = result.rows.map(row => ({
     id: row.id,
     title: row.title,
     segments: row.segments,
-    likeCount: row.like_count,
+    likeCount: parseInt(row.like_count),
+    isLiked: row.is_liked,
     createdAt: row.created_at
   }))
 
@@ -119,18 +123,31 @@ router.post('/like/:id', async (req: Request, res: Response) => {
 
   const { id } = req.params
 
-  const result = await getPool().query(
-    `UPDATE drawings.likes SET like_count = like_count + 1 WHERE drawing_id = $1 RETURNING like_count`,
+  const existing = await getPool().query(
+    `SELECT 1 FROM drawings.likes WHERE drawing_id = $1 AND user_id = $2`,
+    [id, user.userId]
+  )
+
+  if (existing.rowCount && existing.rowCount > 0) {
+    await getPool().query(
+      `DELETE FROM drawings.likes WHERE drawing_id = $1 AND user_id = $2`,
+      [id, user.userId]
+    )
+  } else {
+    await getPool().query(
+      `INSERT INTO drawings.likes (drawing_id, user_id) VALUES ($1, $2)`,
+      [id, user.userId]
+    )
+  }
+
+  const countResult = await getPool().query(
+    `SELECT COUNT(*) as like_count FROM drawings.likes WHERE drawing_id = $1`,
     [id]
   )
 
-  if (result.rowCount === 0) {
-    res.status(404).json({ error: 'Drawing not found' })
-    return
-  }
+  const isLiked = !(existing.rowCount && existing.rowCount > 0)
 
-  res.json({ likeCount: result.rows[0].like_count })
+  res.json({ likeCount: parseInt(countResult.rows[0].like_count), isLiked })
 })
 
 export default router
-
