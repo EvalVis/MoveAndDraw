@@ -417,7 +417,7 @@ class _MapScreenState extends State<MapScreen> {
                 const Icon(Icons.water_drop, size: 20),
                 const SizedBox(width: 4),
                 Text(
-                  _isDrawing ? '${_getTotalPoints()}/$_ink' : '$_ink',
+                  _isDrawing ? '${_ink - _getTotalPoints()}' : '$_ink',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
