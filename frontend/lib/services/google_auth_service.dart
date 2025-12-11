@@ -45,7 +45,9 @@ class GoogleAuthService {
   bool get isSignedIn => _currentUser != null;
 
   Future<String?> getIdToken() async {
-    final authentication = await _currentUser?.authentication;
-    return authentication?.idToken;
+    await signInSilently();
+    if (_currentUser == null) return null;
+    final authentication = await _currentUser!.authentication;
+    return authentication.idToken;
   }
 }
