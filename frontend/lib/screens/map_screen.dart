@@ -168,57 +168,79 @@ class _MapScreenState extends State<MapScreen> {
 
   void _showSaveDrawingDialog() {
     final TextEditingController nameController = TextEditingController();
+    bool commentsEnabled = true;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Save Drawing'),
-          content: TextField(
-            controller: nameController,
-            decoration: const InputDecoration(
-              labelText: 'Drawing Name',
-              hintText: 'Enter a name for your drawing',
-            ),
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final token = await _authService.getIdToken();
-                if (token == null) return;
-
-                final segments = <Map<String, dynamic>>[];
-                for (final polyline in _polylines) {
-                  final points = polyline.points
-                      .map((p) => [p.longitude, p.latitude])
-                      .toList();
-                  final colorHex =
-                      '#${polyline.color.value.toRadixString(16).substring(2).toUpperCase()}';
-                  segments.add({'points': points, 'color': colorHex});
-                }
-                await http.post(
-                  Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/save'),
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer $token',
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Save Drawing'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Drawing Name',
+                      hintText: 'Enter a name for your drawing',
+                    ),
+                    autofocus: true,
+                  ),
+                  const SizedBox(height: 16),
+                  CheckboxListTile(
+                    title: const Text('Allow comments'),
+                    value: commentsEnabled,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        commentsEnabled = value ?? true;
+                      });
+                    },
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
                   },
-                  body: jsonEncode({
-                    'title': nameController.text,
-                    'segments': segments,
-                  }),
-                );
-                if (context.mounted) Navigator.of(context).pop();
-              },
-              child: const Text('Submit'),
-            ),
-          ],
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final token = await _authService.getIdToken();
+                    if (token == null) return;
+
+                    final segments = <Map<String, dynamic>>[];
+                    for (final polyline in _polylines) {
+                      final points = polyline.points
+                          .map((p) => [p.longitude, p.latitude])
+                          .toList();
+                      final colorHex =
+                          '#${polyline.color.value.toRadixString(16).substring(2).toUpperCase()}';
+                      segments.add({'points': points, 'color': colorHex});
+                    }
+                    await http.post(
+                      Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/save'),
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer $token',
+                      },
+                      body: jsonEncode({
+                        'title': nameController.text,
+                        'segments': segments,
+                        'commentsEnabled': commentsEnabled,
+                      }),
+                    );
+                    if (context.mounted) Navigator.of(context).pop();
+                  },
+                  child: const Text('Submit'),
+                ),
+              ],
+            );
+          },
         );
       },
     ).then((_) {

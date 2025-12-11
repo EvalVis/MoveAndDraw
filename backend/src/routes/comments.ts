@@ -50,6 +50,21 @@ router.post('/save', async (req: Request, res: Response) => {
 
   const { drawingId, content } = req.body as SaveCommentBody
 
+  const drawingResult = await getPool().query(
+    `SELECT comments_enabled FROM drawings.drawings WHERE id = $1`,
+    [drawingId]
+  )
+
+  if (drawingResult.rowCount === 0) {
+    res.status(404).json({ error: 'Drawing not found' })
+    return
+  }
+
+  if (!drawingResult.rows[0].comments_enabled) {
+    res.status(403).json({ error: 'Comments are disabled for this drawing' })
+    return
+  }
+
   const result = await getPool().query(
     `INSERT INTO drawings.comments (drawing_id, username, content) VALUES ($1, $2, $3) RETURNING id, created_at`,
     [drawingId, username, content]

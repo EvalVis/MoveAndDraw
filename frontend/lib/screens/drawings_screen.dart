@@ -89,6 +89,7 @@ class Drawing {
   final int id;
   final String title;
   final List<DrawingSegment> segments;
+  final bool commentsEnabled;
   int likeCount;
   bool isLiked;
   final DateTime createdAt;
@@ -97,6 +98,7 @@ class Drawing {
     required this.id,
     required this.title,
     required this.segments,
+    required this.commentsEnabled,
     required this.likeCount,
     required this.isLiked,
     required this.createdAt,
@@ -112,6 +114,7 @@ class Drawing {
       id: json['id'],
       title: json['title'],
       segments: segments,
+      commentsEnabled: json['commentsEnabled'] ?? true,
       likeCount: json['likeCount'] ?? 0,
       isLiked: json['isLiked'] ?? false,
       createdAt: DateTime.parse(json['createdAt']),
@@ -195,7 +198,9 @@ class _DrawingCardState extends State<DrawingCard> {
     if (token == null) return;
 
     final response = await http.get(
-      Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/comments/view?drawingId=${widget.drawing.id}'),
+      Uri.parse(
+        '${dotenv.env['BACKEND_URL']}/drawings/comments/view?drawingId=${widget.drawing.id}',
+      ),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -225,10 +230,7 @@ class _DrawingCardState extends State<DrawingCard> {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({
-        'drawingId': widget.drawing.id,
-        'content': content,
-      }),
+      body: jsonEncode({'drawingId': widget.drawing.id, 'content': content}),
     );
 
     if (response.statusCode == 201) {
@@ -249,7 +251,9 @@ class _DrawingCardState extends State<DrawingCard> {
     }
 
     final response = await http.post(
-      Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/like/${widget.drawing.id}'),
+      Uri.parse(
+        '${dotenv.env['BACKEND_URL']}/drawings/like/${widget.drawing.id}',
+      ),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -294,7 +298,9 @@ class _DrawingCardState extends State<DrawingCard> {
                         IconButton(
                           onPressed: _isLiking ? null : _toggleLike,
                           icon: Icon(
-                            widget.drawing.isLiked ? Icons.favorite : Icons.favorite_border,
+                            widget.drawing.isLiked
+                                ? Icons.favorite
+                                : Icons.favorite_border,
                           ),
                           color: Colors.red,
                         ),
@@ -307,50 +313,65 @@ class _DrawingCardState extends State<DrawingCard> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _commentController,
-                        decoration: const InputDecoration(
-                          hintText: 'Add a comment...',
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          border: OutlineInputBorder(),
+                if (widget.drawing.commentsEnabled)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _commentController,
+                          decoration: const InputDecoration(
+                            hintText: 'Add a comment...',
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            border: OutlineInputBorder(),
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: _isSendingComment ? null : _sendComment,
+                        icon: _isSendingComment
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.send),
+                      ),
+                    ],
+                  )
+                else
+                  Text(
+                    'Comments are disabled for this drawing',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
                     ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: _isSendingComment ? null : _sendComment,
-                      icon: _isSendingComment
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.send),
-                    ),
-                  ],
-                ),
+                  ),
                 if (_comments.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Divider(),
-                  ..._comments.map((comment) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          comment.username,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.bold,
+                  ..._comments.map(
+                    (comment) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            comment.username,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
-                        ),
-                        Text(comment.content),
-                      ],
+                          Text(comment.content),
+                        ],
+                      ),
                     ),
-                  )),
+                  ),
                 ],
               ],
             ),

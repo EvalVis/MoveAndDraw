@@ -43,6 +43,7 @@ interface Segment {
 interface SaveDrawingBody {
   title: string
   segments: Segment[]
+  commentsEnabled: boolean
 }
 
 router.post('/save', async (req: Request, res: Response) => {
@@ -59,11 +60,11 @@ router.post('/save', async (req: Request, res: Response) => {
     return
   }
 
-  const { title, segments } = req.body as SaveDrawingBody
+  const { title, segments, commentsEnabled } = req.body as SaveDrawingBody
 
   await getPool().query(
-    `INSERT INTO drawings.drawings (owner, title, segments) VALUES ($1, $2, $3)`,
-    [user.name, title, JSON.stringify(segments)]
+    `INSERT INTO drawings.drawings (owner, title, segments, comments_enabled) VALUES ($1, $2, $3, $4)`,
+    [user.name, title, JSON.stringify(segments), commentsEnabled]
   )
 
   res.status(201).json({ success: true })
@@ -84,7 +85,7 @@ router.get('/view', async (req: Request, res: Response) => {
   }
 
   const result = await getPool().query(
-    `SELECT d.id, d.title, d.segments, d.created_at,
+    `SELECT d.id, d.title, d.segments, d.comments_enabled, d.created_at,
             COUNT(l.user_id) as like_count,
             EXISTS(SELECT 1 FROM drawings.likes WHERE drawing_id = d.id AND user_id = $2) as is_liked
      FROM drawings.drawings d
@@ -99,6 +100,7 @@ router.get('/view', async (req: Request, res: Response) => {
     id: row.id,
     title: row.title,
     segments: row.segments,
+    commentsEnabled: row.comments_enabled,
     likeCount: parseInt(row.like_count),
     isLiked: row.is_liked,
     createdAt: row.created_at

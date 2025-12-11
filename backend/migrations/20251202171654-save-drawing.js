@@ -19,6 +19,7 @@ exports.up = async function(db) {
       owner VARCHAR(100) NOT NULL,
       title VARCHAR(255),
       segments JSONB,
+      comments_enabled BOOLEAN DEFAULT TRUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
