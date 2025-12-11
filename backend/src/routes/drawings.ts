@@ -62,12 +62,26 @@ router.post('/save', async (req: Request, res: Response) => {
 
   const { title, segments, commentsEnabled } = req.body as SaveDrawingBody
 
+  const totalPoints = segments.reduce((sum, seg) => sum + seg.points.length, 0)
+
+  const inkResult = await getPool().query(
+    `UPDATE drawings.user_ink SET ink = ink - $2
+     WHERE user_id = $1 AND ink >= $2
+     RETURNING ink`,
+    [user.userId, totalPoints]
+  )
+
+  if (inkResult.rowCount === 0) {
+    res.status(400).json({ error: 'Not enough ink' })
+    return
+  }
+
   await getPool().query(
     `INSERT INTO drawings.drawings (owner, title, segments, comments_enabled) VALUES ($1, $2, $3, $4)`,
     [user.name, title, JSON.stringify(segments), commentsEnabled]
   )
 
-  res.status(201).json({ success: true })
+  res.status(201).json({ success: true, inkRemaining: inkResult.rows[0].ink })
 })
 
 router.get('/view', async (req: Request, res: Response) => {

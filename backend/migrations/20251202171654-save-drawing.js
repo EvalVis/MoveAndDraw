@@ -41,9 +41,18 @@ exports.up = async function(db) {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  await db.runSql(`
+    CREATE TABLE drawings.user_ink (
+      user_id VARCHAR(255) PRIMARY KEY,
+      ink INTEGER NOT NULL DEFAULT 1000,
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 };
 
 exports.down = async function(db) {
+  await db.runSql(`DROP TABLE drawings.user_ink;`);
   await db.runSql(`DROP TABLE drawings.comments;`);
   await db.runSql(`DROP TABLE drawings.likes;`);
   await db.runSql(`DROP TABLE drawings.drawings;`);

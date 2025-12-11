@@ -29,12 +29,47 @@ class _MapScreenState extends State<MapScreen> {
   int _polylineIdCounter = 0;
   Color _selectedColor = Colors.red;
   Color _currentSegmentColor = Colors.red;
+  int _ink = 0;
+  Timer? _inkRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
     _startLocationTracking();
+    _fetchInk();
+    _startInkRefreshTimer();
+  }
+
+  void _startInkRefreshTimer() {
+    _inkRefreshTimer = Timer.periodic(const Duration(hours: 1), (_) {
+      _fetchInk();
+    });
+  }
+
+  Future<void> _fetchInk() async {
+    final token = await _authService.getIdToken();
+    if (token == null) return;
+
+    final response = await http.get(
+      Uri.parse('${dotenv.env['BACKEND_URL']}/user/ink'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      setState(() {
+        _ink = data['ink'];
+      });
+    }
+  }
+
+  int _getTotalPoints() {
+    int total = 0;
+    for (final polyline in _polylines) {
+      total += polyline.points.length;
+    }
+    return total;
   }
 
   Future<void> _getCurrentLocation() async {
@@ -222,7 +257,7 @@ class _MapScreenState extends State<MapScreen> {
                           '#${polyline.color.value.toRadixString(16).substring(2).toUpperCase()}';
                       segments.add({'points': points, 'color': colorHex});
                     }
-                    await http.post(
+                    final response = await http.post(
                       Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/save'),
                       headers: {
                         'Content-Type': 'application/json',
@@ -234,7 +269,19 @@ class _MapScreenState extends State<MapScreen> {
                         'commentsEnabled': commentsEnabled,
                       }),
                     );
-                    if (context.mounted) Navigator.of(context).pop();
+                    if (response.statusCode == 201) {
+                      final data = jsonDecode(response.body);
+                      setState(() {
+                        _ink = data['inkRemaining'];
+                      });
+                      if (context.mounted) Navigator.of(context).pop();
+                    } else if (response.statusCode == 400) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Not enough ink!')),
+                        );
+                      }
+                    }
                   },
                   child: const Text('Submit'),
                 ),
@@ -363,6 +410,19 @@ class _MapScreenState extends State<MapScreen> {
           ],
         ),
         actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Row(
+              children: [
+                const Icon(Icons.water_drop, size: 20),
+                const SizedBox(width: 4),
+                Text(
+                  _isDrawing ? '${_getTotalPoints()}/$_ink' : '$_ink',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
           if (user != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -407,6 +467,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
+    _inkRefreshTimer?.cancel();
     _positionStreamSubscription?.cancel();
     _mapController?.dispose();
     super.dispose();

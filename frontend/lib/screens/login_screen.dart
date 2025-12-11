@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 import '../services/google_auth_service.dart';
 import '../screens/home_screen.dart';
 
@@ -23,6 +25,14 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (user != null) {
+      final token = await _authService.getIdToken();
+      if (token != null) {
+        await http.post(
+          Uri.parse('${dotenv.env['BACKEND_URL']}/user/login'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+      }
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
