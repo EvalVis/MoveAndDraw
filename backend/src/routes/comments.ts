@@ -100,10 +100,20 @@ router.get('/view', async (req: Request, res: Response) => {
   }
 
   const drawingId = req.query.drawingId
+  const page = Math.max(1, parseInt(req.query.page as string) || 1)
+  const limit = 10
+  const offset = (page - 1) * limit
+
+  const countResult = await getPool().query(
+    `SELECT COUNT(*) as total FROM drawings.comments WHERE drawing_id = $1`,
+    [drawingId]
+  )
+  const total = parseInt(countResult.rows[0].total)
+  const totalPages = Math.ceil(total / limit)
 
   const result = await getPool().query(
-    `SELECT id, artist_name, content, created_at FROM drawings.comments WHERE drawing_id = $1 ORDER BY created_at DESC`,
-    [drawingId]
+    `SELECT id, artist_name, content, created_at FROM drawings.comments WHERE drawing_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+    [drawingId, limit, offset]
   )
 
   const comments = result.rows.map(row => ({
@@ -113,7 +123,7 @@ router.get('/view', async (req: Request, res: Response) => {
     createdAt: row.created_at
   }))
 
-  res.json(comments)
+  res.json({ comments, page, totalPages, total })
 })
 
 export default router

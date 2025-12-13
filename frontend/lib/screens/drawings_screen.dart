@@ -325,6 +325,8 @@ class _DrawingCardState extends State<DrawingCard> {
   bool _isLiking = false;
   bool _isSendingComment = false;
   List<Comment> _comments = [];
+  int _commentPage = 1;
+  int _commentTotalPages = 1;
 
   @override
   void initState() {
@@ -344,17 +346,26 @@ class _DrawingCardState extends State<DrawingCard> {
 
     final response = await http.get(
       Uri.parse(
-        '${dotenv.env['BACKEND_URL']}/drawings/comments/view?drawingId=${widget.drawing.id}',
+        '${dotenv.env['BACKEND_URL']}/drawings/comments/view?drawingId=${widget.drawing.id}&page=$_commentPage',
       ),
       headers: {'Authorization': 'Bearer $token'},
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
+      final data = jsonDecode(response.body);
+      final List<dynamic> commentsData = data['comments'];
       setState(() {
-        _comments = data.map((c) => Comment.fromJson(c)).toList();
+        _comments = commentsData.map((c) => Comment.fromJson(c)).toList();
+        _commentPage = data['page'];
+        _commentTotalPages = data['totalPages'];
       });
     }
+  }
+
+  void _goToCommentPage(int page) {
+    if (page < 1 || page > _commentTotalPages || page == _commentPage) return;
+    setState(() => _commentPage = page);
+    _fetchComments();
   }
 
   Future<void> _sendComment() async {
@@ -380,6 +391,7 @@ class _DrawingCardState extends State<DrawingCard> {
 
     if (response.statusCode == 201) {
       _commentController.clear();
+      _commentPage = 1;
       _fetchComments();
     }
     setState(() => _isSendingComment = false);
@@ -535,6 +547,30 @@ class _DrawingCardState extends State<DrawingCard> {
                       ),
                     ),
                   ),
+                  if (_commentTotalPages > 1)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: _commentPage > 1
+                              ? () => _goToCommentPage(_commentPage - 1)
+                              : null,
+                          icon: const Icon(Icons.chevron_left, size: 20),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        Text(
+                          '$_commentPage / $_commentTotalPages',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        IconButton(
+                          onPressed: _commentPage < _commentTotalPages
+                              ? () => _goToCommentPage(_commentPage + 1)
+                              : null,
+                          icon: const Icon(Icons.chevron_right, size: 20),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
                 ],
               ],
             ),
