@@ -99,6 +99,22 @@ router.get('/view', async (req: Request, res: Response) => {
     return
   }
 
+  const sort = req.query.sort as string || 'newest'
+  let orderClause: string
+  switch (sort) {
+    case 'popular':
+      orderClause = 'ORDER BY like_count DESC, d.created_at DESC'
+      break
+    case 'unpopular':
+      orderClause = 'ORDER BY like_count ASC, d.created_at DESC'
+      break
+    case 'oldest':
+      orderClause = 'ORDER BY d.created_at ASC'
+      break
+    default:
+      orderClause = 'ORDER BY d.created_at DESC'
+  }
+
   const result = await getPool().query(
     `SELECT d.id, d.artist_name, d.owner_id, d.title, d.segments, d.comments_enabled, d.is_public, d.created_at,
             COUNT(l.user_id) as like_count,
@@ -107,7 +123,7 @@ router.get('/view', async (req: Request, res: Response) => {
      LEFT JOIN drawings.likes l ON d.id = l.drawing_id
      WHERE d.is_public = TRUE OR d.owner_id = $1
      GROUP BY d.id
-     ORDER BY d.created_at DESC`,
+     ${orderClause}`,
     [user.userId]
   )
 

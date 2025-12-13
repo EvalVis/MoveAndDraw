@@ -12,10 +12,13 @@ class DrawingsScreen extends StatefulWidget {
   State<DrawingsScreen> createState() => _DrawingsScreenState();
 }
 
+enum SortOption { popular, unpopular, newest, oldest }
+
 class _DrawingsScreenState extends State<DrawingsScreen> {
   final _authService = GoogleAuthService();
   List<Drawing> _drawings = [];
   bool _isLoading = true;
+  SortOption _sortOption = SortOption.newest;
 
   @override
   void initState() {
@@ -30,8 +33,9 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
       return;
     }
 
+    final sortParam = _sortOption.name;
     final response = await http.get(
-      Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/view'),
+      Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/view?sort=$sortParam'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -46,10 +50,49 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
     }
   }
 
+  void _onSortChanged(SortOption? option) {
+    if (option == null || option == _sortOption) return;
+    setState(() {
+      _sortOption = option;
+      _isLoading = true;
+    });
+    _fetchDrawings();
+  }
+
+  String _sortLabel(SortOption option) {
+    switch (option) {
+      case SortOption.popular:
+        return 'Popular';
+      case SortOption.unpopular:
+        return 'Unpopular';
+      case SortOption.newest:
+        return 'Newest';
+      case SortOption.oldest:
+        return 'Oldest';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Drawings')),
+      appBar: AppBar(
+        title: const Text('Drawings'),
+        actions: [
+          DropdownButton<SortOption>(
+            value: _sortOption,
+            underline: const SizedBox(),
+            icon: const Icon(Icons.sort),
+            items: SortOption.values.map((option) {
+              return DropdownMenuItem(
+                value: option,
+                child: Text(_sortLabel(option)),
+              );
+            }).toList(),
+            onChanged: _onSortChanged,
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _drawings.isEmpty
