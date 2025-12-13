@@ -229,7 +229,9 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
                         style: FilledButton.styleFrom(
                           backgroundColor: _myDrawingsOnly
                               ? Theme.of(context).colorScheme.primaryContainer
-                              : Theme.of(context).colorScheme.surfaceContainerHighest,
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest,
                           foregroundColor: _myDrawingsOnly
                               ? Theme.of(context).colorScheme.onPrimaryContainer
                               : Theme.of(context).colorScheme.onSurface,
@@ -481,17 +483,25 @@ class _DrawingCardState extends State<DrawingCard> {
 
   Future<void> _sendComment() async {
     final content = _commentController.text.trim();
-    if (content.isEmpty || _isSendingComment) return;
+    if (content.isEmpty) return;
 
-    setState(() => _isSendingComment = true);
+    final userName = _authService.currentUser?.displayName ?? 'You';
+    final optimisticComment = Comment(
+      id: -DateTime.now().millisecondsSinceEpoch,
+      artistName: userName,
+      content: content,
+      createdAt: DateTime.now(),
+    );
+
+    setState(() {
+      _comments.insert(0, optimisticComment);
+    });
+    _commentController.clear();
 
     final token = await _authService.getIdToken();
-    if (token == null) {
-      setState(() => _isSendingComment = false);
-      return;
-    }
+    if (token == null) return;
 
-    final response = await http.post(
+    http.post(
       Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/comments/save'),
       headers: {
         'Authorization': 'Bearer $token',
@@ -499,13 +509,6 @@ class _DrawingCardState extends State<DrawingCard> {
       },
       body: jsonEncode({'drawingId': widget.drawing.id, 'content': content}),
     );
-
-    if (response.statusCode == 201) {
-      _commentController.clear();
-      _commentPage = 1;
-      _fetchComments();
-    }
-    setState(() => _isSendingComment = false);
   }
 
   Future<void> _toggleLike() async {
