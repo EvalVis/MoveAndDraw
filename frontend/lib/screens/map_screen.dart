@@ -240,6 +240,10 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _stopDrawing() {
+    if (!_isPaused) {
+      _finalizeCurrentSegment();
+      setState(() => _isPaused = true);
+    }
     _showSaveDrawingDialog();
   }
 
@@ -280,6 +284,31 @@ class _MapScreenState extends State<MapScreen> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Discard Drawing?'),
+                  content: const Text('Are you sure? Your drawing will be discarded.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('No'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('Yes'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true && context.mounted) {
+                Navigator.of(context).pop('discard');
+              }
+            },
+            child: const Text('Discard'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -365,10 +394,33 @@ class _MapScreenState extends State<MapScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
+                  onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Discard Drawing?'),
+                        content: const Text('Are you sure? Your drawing will be discarded.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('No'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('Yes'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true && context.mounted) {
+                      Navigator.of(context).pop('discard');
+                    }
+                  },
+                  child: const Text('Discard'),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -425,7 +477,7 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _isDrawing = false;
       _isPaused = false;
-      if (saved == true) {
+      if (saved == true || saved == 'discard') {
         _polylines.clear();
         _polylineIdCounter = 0;
       } else if (_currentPathPoints.isNotEmpty) {
