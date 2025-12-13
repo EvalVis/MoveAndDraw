@@ -87,7 +87,7 @@ class DrawingSegment {
 
 class Drawing {
   final int id;
-  final String owner;
+  final String artistName;
   final bool isOwner;
   final String title;
   final List<DrawingSegment> segments;
@@ -99,7 +99,7 @@ class Drawing {
 
   Drawing({
     required this.id,
-    required this.owner,
+    required this.artistName,
     required this.isOwner,
     required this.title,
     required this.segments,
@@ -118,7 +118,7 @@ class Drawing {
 
     return Drawing(
       id: json['id'],
-      owner: json['owner'] ?? '',
+      artistName: json['artistName'] ?? '',
       isOwner: json['isOwner'] ?? false,
       title: json['title'],
       segments: segments,
@@ -153,13 +153,13 @@ class Drawing {
 
 class Comment {
   final int id;
-  final String username;
+  final String artistName;
   final String content;
   final DateTime createdAt;
 
   Comment({
     required this.id,
-    required this.username,
+    required this.artistName,
     required this.content,
     required this.createdAt,
   });
@@ -167,7 +167,7 @@ class Comment {
   factory Comment.fromJson(Map<String, dynamic> json) {
     return Comment(
       id: json['id'],
-      username: json['username'],
+      artistName: json['artistName'],
       content: json['content'],
       createdAt: DateTime.parse(json['createdAt']),
     );
@@ -307,7 +307,7 @@ class _DrawingCardState extends State<DrawingCard> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'by ${widget.drawing.owner}',
+                  'by ${widget.drawing.artistName}',
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
@@ -390,7 +390,7 @@ class _DrawingCardState extends State<DrawingCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            comment.username,
+                            comment.artistName,
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           ),

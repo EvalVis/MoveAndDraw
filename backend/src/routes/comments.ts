@@ -20,13 +20,19 @@ function getOAuthClient() {
   return oauthClient
 }
 
-async function verifyToken(token: string): Promise<string | null> {
+interface TokenPayload {
+  userId: string
+  name: string
+}
+
+async function verifyToken(token: string): Promise<TokenPayload | null> {
   const ticket = await getOAuthClient().verifyIdToken({
     idToken: token,
     audience: process.env.GOOGLE_OAUTH2_SERVER_CLIENT_ID,
   })
   const payload = ticket.getPayload()
-  return payload?.name ?? null
+  if (!payload?.sub || !payload?.name) return null
+  return { userId: payload.sub, name: payload.name }
 }
 
 interface SaveCommentBody {
@@ -42,8 +48,8 @@ router.post('/save', async (req: Request, res: Response) => {
   }
 
   const token = authHeader.slice(7)
-  const username = await verifyToken(token)
-  if (!username) {
+  const user = await verifyToken(token)
+  if (!user) {
     res.status(401).json({ error: 'Invalid token' })
     return
   }
@@ -66,14 +72,14 @@ router.post('/save', async (req: Request, res: Response) => {
   }
 
   const result = await getPool().query(
-    `INSERT INTO drawings.comments (drawing_id, username, content) VALUES ($1, $2, $3) RETURNING id, created_at`,
-    [drawingId, username, content]
+    `INSERT INTO drawings.comments (drawing_id, artist_name, content) VALUES ($1, $2, $3) RETURNING id, created_at`,
+    [drawingId, user.name, content]
   )
 
   res.status(201).json({
     id: result.rows[0].id,
     drawingId,
-    username,
+    artistName: user.name,
     content,
     createdAt: result.rows[0].created_at
   })
@@ -87,8 +93,8 @@ router.get('/view', async (req: Request, res: Response) => {
   }
 
   const token = authHeader.slice(7)
-  const username = await verifyToken(token)
-  if (!username) {
+  const user = await verifyToken(token)
+  if (!user) {
     res.status(401).json({ error: 'Invalid token' })
     return
   }
@@ -96,13 +102,13 @@ router.get('/view', async (req: Request, res: Response) => {
   const drawingId = req.query.drawingId
 
   const result = await getPool().query(
-    `SELECT id, username, content, created_at FROM drawings.comments WHERE drawing_id = $1 ORDER BY created_at DESC`,
+    `SELECT id, artist_name, content, created_at FROM drawings.comments WHERE drawing_id = $1 ORDER BY created_at DESC`,
     [drawingId]
   )
 
   const comments = result.rows.map(row => ({
     id: row.id,
-    username: row.username,
+    artistName: row.artist_name,
     content: row.content,
     createdAt: row.created_at
   }))

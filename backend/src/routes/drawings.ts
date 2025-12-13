@@ -66,7 +66,7 @@ router.post('/save', async (req: Request, res: Response) => {
   const totalPoints = segments.reduce((sum, seg) => sum + seg.points.length, 0)
 
   const inkResult = await getPool().query(
-    `UPDATE drawings.user_ink SET ink = ink - $2
+    `UPDATE "user".ink SET ink = ink - $2
      WHERE user_id = $1 AND ink >= $2
      RETURNING ink`,
     [user.userId, totalPoints]
@@ -78,7 +78,7 @@ router.post('/save', async (req: Request, res: Response) => {
   }
 
   await getPool().query(
-    `INSERT INTO drawings.drawings (owner, owner_id, title, segments, comments_enabled, is_public) VALUES ($1, $2, $3, $4, $5, $6)`,
+    `INSERT INTO drawings.drawings (artist_name, owner_id, title, segments, comments_enabled, is_public) VALUES ($1, $2, $3, $4, $5, $6)`,
     [user.name, user.userId, title, JSON.stringify(segments), commentsEnabled, isPublic]
   )
 
@@ -100,7 +100,7 @@ router.get('/view', async (req: Request, res: Response) => {
   }
 
   const result = await getPool().query(
-    `SELECT d.id, d.owner, d.owner_id, d.title, d.segments, d.comments_enabled, d.is_public, d.created_at,
+    `SELECT d.id, d.artist_name, d.owner_id, d.title, d.segments, d.comments_enabled, d.is_public, d.created_at,
             COUNT(l.user_id) as like_count,
             EXISTS(SELECT 1 FROM drawings.likes WHERE drawing_id = d.id AND user_id = $1) as is_liked
      FROM drawings.drawings d
@@ -113,7 +113,7 @@ router.get('/view', async (req: Request, res: Response) => {
 
   const drawings = result.rows.map(row => ({
     id: row.id,
-    owner: row.owner,
+    artistName: row.artist_name,
     isOwner: row.owner_id === user.userId,
     title: row.title,
     segments: row.segments,

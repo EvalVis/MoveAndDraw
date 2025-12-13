@@ -24,13 +24,19 @@ function getOAuthClient() {
   return oauthClient
 }
 
-async function verifyToken(token: string): Promise<string | null> {
+interface TokenPayload {
+  userId: string
+  name: string
+}
+
+async function verifyToken(token: string): Promise<TokenPayload | null> {
   const ticket = await getOAuthClient().verifyIdToken({
     idToken: token,
     audience: process.env.GOOGLE_OAUTH2_SERVER_CLIENT_ID,
   })
   const payload = ticket.getPayload()
-  return payload?.sub ?? null
+  if (!payload?.sub || !payload?.name) return null
+  return { userId: payload.sub, name: payload.name }
 }
 
 router.post('/login', async (req: Request, res: Response) => {
@@ -41,17 +47,24 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 
   const token = authHeader.slice(7)
-  const userId = await verifyToken(token)
-  if (!userId) {
+  const user = await verifyToken(token)
+  if (!user) {
     res.status(401).json({ error: 'Invalid token' })
     return
   }
 
   await getPool().query(
-    `INSERT INTO drawings.user_ink (user_id, ink, last_updated)
+    `INSERT INTO "user".artist_name (user_id, artist_name)
+     VALUES ($1, $2)
+     ON CONFLICT (user_id) DO NOTHING`,
+    [user.userId, user.name]
+  )
+
+  await getPool().query(
+    `INSERT INTO "user".ink (user_id, ink, last_updated)
      VALUES ($1, $2, NOW())
      ON CONFLICT (user_id) DO NOTHING`,
-    [userId, INITIAL_INK]
+    [user.userId, INITIAL_INK]
   )
 
   res.json({ success: true })
@@ -65,14 +78,14 @@ router.get('/ink', async (req: Request, res: Response) => {
   }
 
   const token = authHeader.slice(7)
-  const userId = await verifyToken(token)
-  if (!userId) {
+  const user = await verifyToken(token)
+  if (!user) {
     res.status(401).json({ error: 'Invalid token' })
     return
   }
 
   const result = await getPool().query(
-    `UPDATE drawings.user_ink SET
+    `UPDATE "user".ink SET
        ink = LEAST(ink + FLOOR(EXTRACT(EPOCH FROM (NOW() - last_updated)) / 3600) * $2, $3),
        last_updated = CASE
          WHEN FLOOR(EXTRACT(EPOCH FROM (NOW() - last_updated)) / 3600) > 0 THEN NOW()
@@ -80,7 +93,7 @@ router.get('/ink', async (req: Request, res: Response) => {
        END
      WHERE user_id = $1
      RETURNING ink`,
-    [userId, INK_PER_HOUR, INK_CAP]
+    [user.userId, INK_PER_HOUR, INK_CAP]
   )
 
   if (result.rowCount === 0) {
