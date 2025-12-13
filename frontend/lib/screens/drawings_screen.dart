@@ -512,30 +512,21 @@ class _DrawingCardState extends State<DrawingCard> {
   }
 
   Future<void> _toggleLike() async {
-    if (_isLiking) return;
-    setState(() => _isLiking = true);
+    final wasLiked = widget.drawing.isLiked;
+    setState(() {
+      widget.drawing.isLiked = !wasLiked;
+      widget.drawing.likeCount += wasLiked ? -1 : 1;
+    });
 
     final token = await _authService.getIdToken();
-    if (token == null) {
-      setState(() => _isLiking = false);
-      return;
-    }
+    if (token == null) return;
 
-    final response = await http.post(
+    http.post(
       Uri.parse(
         '${dotenv.env['BACKEND_URL']}/drawings/like/${widget.drawing.id}',
       ),
       headers: {'Authorization': 'Bearer $token'},
     );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      setState(() {
-        widget.drawing.likeCount = data['likeCount'];
-        widget.drawing.isLiked = data['isLiked'];
-      });
-    }
-    setState(() => _isLiking = false);
   }
 
   @override
