@@ -16,14 +16,22 @@ enum SortOption { popular, unpopular, newest, oldest }
 
 class _DrawingsScreenState extends State<DrawingsScreen> {
   final _authService = GoogleAuthService();
+  final _searchController = TextEditingController();
   List<Drawing> _drawings = [];
   bool _isLoading = true;
   SortOption _sortOption = SortOption.newest;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _fetchDrawings();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchDrawings() async {
@@ -34,8 +42,11 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
     }
 
     final sortParam = _sortOption.name;
+    final searchParam = Uri.encodeComponent(_searchQuery);
     final response = await http.get(
-      Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/view?sort=$sortParam'),
+      Uri.parse(
+        '${dotenv.env['BACKEND_URL']}/drawings/view?sort=$sortParam&search=$searchParam',
+      ),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -54,6 +65,14 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
     if (option == null || option == _sortOption) return;
     setState(() {
       _sortOption = option;
+      _isLoading = true;
+    });
+    _fetchDrawings();
+  }
+
+  void _onSearchSubmitted(String value) {
+    setState(() {
+      _searchQuery = value.trim();
       _isLoading = true;
     });
     _fetchDrawings();
@@ -92,6 +111,36 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
           ),
           const SizedBox(width: 8),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search by artist or title...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          _onSearchSubmitted('');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+              onSubmitted: _onSearchSubmitted,
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

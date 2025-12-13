@@ -100,6 +100,8 @@ router.get('/view', async (req: Request, res: Response) => {
   }
 
   const sort = req.query.sort as string || 'newest'
+  const search = req.query.search as string || ''
+
   let orderClause: string
   switch (sort) {
     case 'popular':
@@ -115,16 +117,23 @@ router.get('/view', async (req: Request, res: Response) => {
       orderClause = 'ORDER BY d.created_at DESC'
   }
 
+  const searchClause = search
+    ? 'AND (d.artist_name ILIKE $2 OR d.title ILIKE $2)'
+    : ''
+  const params = search
+    ? [user.userId, `%${search}%`]
+    : [user.userId]
+
   const result = await getPool().query(
     `SELECT d.id, d.artist_name, d.owner_id, d.title, d.segments, d.comments_enabled, d.is_public, d.created_at,
             COUNT(l.user_id) as like_count,
             EXISTS(SELECT 1 FROM drawings.likes WHERE drawing_id = d.id AND user_id = $1) as is_liked
      FROM drawings.drawings d
      LEFT JOIN drawings.likes l ON d.id = l.drawing_id
-     WHERE d.is_public = TRUE OR d.owner_id = $1
+     WHERE (d.is_public = TRUE OR d.owner_id = $1) ${searchClause}
      GROUP BY d.id
      ${orderClause}`,
-    [user.userId]
+    params
   )
 
   const drawings = result.rows.map(row => ({
