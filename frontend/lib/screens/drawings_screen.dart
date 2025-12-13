@@ -21,6 +21,8 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
   bool _isLoading = true;
   SortOption _sortOption = SortOption.newest;
   String _searchQuery = '';
+  int _currentPage = 1;
+  int _totalPages = 1;
 
   @override
   void initState() {
@@ -45,15 +47,18 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
     final searchParam = Uri.encodeComponent(_searchQuery);
     final response = await http.get(
       Uri.parse(
-        '${dotenv.env['BACKEND_URL']}/drawings/view?sort=$sortParam&search=$searchParam',
+        '${dotenv.env['BACKEND_URL']}/drawings/view?sort=$sortParam&search=$searchParam&page=$_currentPage',
       ),
       headers: {'Authorization': 'Bearer $token'},
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
+      final data = jsonDecode(response.body);
+      final List<dynamic> drawingsData = data['drawings'];
       setState(() {
-        _drawings = data.map((d) => Drawing.fromJson(d)).toList();
+        _drawings = drawingsData.map((d) => Drawing.fromJson(d)).toList();
+        _currentPage = data['page'];
+        _totalPages = data['totalPages'];
         _isLoading = false;
       });
     } else {
@@ -65,6 +70,7 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
     if (option == null || option == _sortOption) return;
     setState(() {
       _sortOption = option;
+      _currentPage = 1;
       _isLoading = true;
     });
     _fetchDrawings();
@@ -73,6 +79,16 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
   void _onSearchSubmitted(String value) {
     setState(() {
       _searchQuery = value.trim();
+      _currentPage = 1;
+      _isLoading = true;
+    });
+    _fetchDrawings();
+  }
+
+  void _goToPage(int page) {
+    if (page < 1 || page > _totalPages || page == _currentPage) return;
+    setState(() {
+      _currentPage = page;
       _isLoading = true;
     });
     _fetchDrawings();
@@ -146,15 +162,43 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _drawings.isEmpty
           ? const Center(child: Text('No drawings yet'))
-          : RefreshIndicator(
-              onRefresh: _fetchDrawings,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _drawings.length,
-                itemBuilder: (context, index) {
-                  return DrawingCard(drawing: _drawings[index]);
-                },
-              ),
+          : Column(
+              children: [
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _fetchDrawings,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _drawings.length,
+                      itemBuilder: (context, index) {
+                        return DrawingCard(drawing: _drawings[index]);
+                      },
+                    ),
+                  ),
+                ),
+                if (_totalPages > 1)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: _currentPage > 1
+                              ? () => _goToPage(_currentPage - 1)
+                              : null,
+                          icon: const Icon(Icons.chevron_left),
+                        ),
+                        Text('$_currentPage / $_totalPages'),
+                        IconButton(
+                          onPressed: _currentPage < _totalPages
+                              ? () => _goToPage(_currentPage + 1)
+                              : null,
+                          icon: const Icon(Icons.chevron_right),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
     );
   }

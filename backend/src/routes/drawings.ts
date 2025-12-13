@@ -101,6 +101,9 @@ router.get('/view', async (req: Request, res: Response) => {
 
   const sort = req.query.sort as string || 'newest'
   const search = req.query.search as string || ''
+  const page = Math.max(1, parseInt(req.query.page as string) || 1)
+  const limit = 10
+  const offset = (page - 1) * limit
 
   let orderClause: string
   switch (sort) {
@@ -120,9 +123,22 @@ router.get('/view', async (req: Request, res: Response) => {
   const searchClause = search
     ? 'AND (d.artist_name ILIKE $2 OR d.title ILIKE $2)'
     : ''
-  const params = search
+  const baseParams = search
     ? [user.userId, `%${search}%`]
     : [user.userId]
+
+  const countResult = await getPool().query(
+    `SELECT COUNT(DISTINCT d.id) as total
+     FROM drawings.drawings d
+     WHERE (d.is_public = TRUE OR d.owner_id = $1) ${searchClause}`,
+    baseParams
+  )
+  const total = parseInt(countResult.rows[0].total)
+  const totalPages = Math.ceil(total / limit)
+
+  const limitParam = baseParams.length + 1
+  const offsetParam = baseParams.length + 2
+  const params = [...baseParams, limit, offset]
 
   const result = await getPool().query(
     `SELECT d.id, d.artist_name, d.owner_id, d.title, d.segments, d.comments_enabled, d.is_public, d.created_at,
@@ -132,7 +148,8 @@ router.get('/view', async (req: Request, res: Response) => {
      LEFT JOIN drawings.likes l ON d.id = l.drawing_id
      WHERE (d.is_public = TRUE OR d.owner_id = $1) ${searchClause}
      GROUP BY d.id
-     ${orderClause}`,
+     ${orderClause}
+     LIMIT $${limitParam} OFFSET $${offsetParam}`,
     params
   )
 
@@ -149,7 +166,7 @@ router.get('/view', async (req: Request, res: Response) => {
     createdAt: row.created_at
   }))
 
-  res.json(drawings)
+  res.json({ drawings, page, totalPages, total })
 })
 
 router.post('/like/:id', async (req: Request, res: Response) => {
