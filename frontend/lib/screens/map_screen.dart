@@ -7,6 +7,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../services/google_auth_service.dart';
+import '../services/guest_service.dart';
 import 'login_screen.dart';
 import 'change_artist_name_dialog.dart';
 
@@ -22,6 +23,7 @@ class _MapScreenState extends State<MapScreen> {
   Position? _currentPosition;
   bool _isLoading = true;
   final _authService = GoogleAuthService();
+  final _guestService = GuestService();
   List<LatLng> _currentPathPoints = [];
   final Set<Polyline> _polylines = {};
   bool _isDrawing = false;
@@ -34,6 +36,8 @@ class _MapScreenState extends State<MapScreen> {
   Timer? _inkRefreshTimer;
   String? _artistName;
 
+  bool get _isGuest => _guestService.isGuest;
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +49,10 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _fetchArtistName() async {
+    if (_isGuest) {
+      setState(() => _artistName = 'Guest');
+      return;
+    }
     final token = await _authService.getIdToken();
     if (token == null) return;
 
@@ -77,6 +85,11 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _fetchInk() async {
+    if (_isGuest) {
+      final ink = await _guestService.refreshInk();
+      setState(() => _ink = ink);
+      return;
+    }
     final token = await _authService.getIdToken();
     if (token == null) return;
 
@@ -231,6 +244,79 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _showSaveDrawingDialog() {
+    if (_isGuest) {
+      _showGuestSaveDialog();
+    } else {
+      _showUserSaveDialog();
+    }
+  }
+
+  void _showGuestSaveDialog() {
+    final nameController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Save Drawing'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Drawing Name',
+                hintText: 'Enter a name for your drawing',
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Guest drawings are saved locally only',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final segments = <Map<String, dynamic>>[];
+              for (final polyline in _polylines) {
+                final points = polyline.points
+                    .map((p) => [p.longitude, p.latitude])
+                    .toList();
+                final colorHex =
+                    '#${polyline.color.value.toRadixString(16).substring(2).toUpperCase()}';
+                segments.add({'points': points, 'color': colorHex});
+              }
+
+              final success = await _guestService.saveDrawing(
+                title: nameController.text,
+                segments: segments,
+              );
+
+              if (success) {
+                setState(() => _ink = _guestService.ink);
+                if (context.mounted) Navigator.of(context).pop(true);
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Not enough ink!')),
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    ).then((saved) => _handleSaveDialogClose(saved));
+  }
+
+  void _showUserSaveDialog() {
     final TextEditingController nameController = TextEditingController();
     bool commentsEnabled = true;
     bool isPublic = true;
@@ -332,27 +418,29 @@ class _MapScreenState extends State<MapScreen> {
           },
         );
       },
-    ).then((saved) {
-      setState(() {
-        _isDrawing = false;
-        _isPaused = false;
-        if (saved == true) {
-          _polylines.clear();
-          _polylineIdCounter = 0;
-        } else if (_currentPathPoints.isNotEmpty) {
-          _polylines.removeWhere((p) => p.polylineId.value == 'current');
-          _polylines.add(
-            Polyline(
-              polylineId: PolylineId('path_$_polylineIdCounter'),
-              points: List.from(_currentPathPoints),
-              color: _currentSegmentColor,
-              width: 5,
-            ),
-          );
-          _polylineIdCounter++;
-        }
-        _currentPathPoints = [];
-      });
+    ).then((saved) => _handleSaveDialogClose(saved));
+  }
+
+  void _handleSaveDialogClose(dynamic saved) {
+    setState(() {
+      _isDrawing = false;
+      _isPaused = false;
+      if (saved == true) {
+        _polylines.clear();
+        _polylineIdCounter = 0;
+      } else if (_currentPathPoints.isNotEmpty) {
+        _polylines.removeWhere((p) => p.polylineId.value == 'current');
+        _polylines.add(
+          Polyline(
+            polylineId: PolylineId('path_$_polylineIdCounter'),
+            points: List.from(_currentPathPoints),
+            color: _currentSegmentColor,
+            width: 5,
+          ),
+        );
+        _polylineIdCounter++;
+      }
+      _currentPathPoints = [];
     });
   }
 
@@ -391,7 +479,11 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _handleSignOut() async {
-    await _authService.signOut();
+    if (_isGuest) {
+      await _guestService.exitGuestMode();
+    } else {
+      await _authService.signOut();
+    }
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -468,7 +560,12 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
           ),
-          if (user != null)
+          if (_isGuest)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: CircleAvatar(child: Icon(Icons.person_outline)),
+            )
+          else if (user != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: GestureDetector(

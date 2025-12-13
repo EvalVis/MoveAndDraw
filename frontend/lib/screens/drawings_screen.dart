@@ -4,6 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../services/google_auth_service.dart';
+import '../services/guest_service.dart';
 
 class DrawingsScreen extends StatefulWidget {
   const DrawingsScreen({super.key});
@@ -16,6 +17,7 @@ enum SortOption { popular, unpopular, newest, oldest }
 
 class _DrawingsScreenState extends State<DrawingsScreen> {
   final _authService = GoogleAuthService();
+  final _guestService = GuestService();
   final _searchController = TextEditingController();
   List<Drawing> _drawings = [];
   bool _isLoading = true;
@@ -23,6 +25,8 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
   String _searchQuery = '';
   int _currentPage = 1;
   int _totalPages = 1;
+
+  bool get _isGuest => _guestService.isGuest;
 
   @override
   void initState() {
@@ -37,6 +41,11 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
   }
 
   Future<void> _fetchDrawings() async {
+    if (_isGuest) {
+      _fetchGuestDrawings();
+      return;
+    }
+
     final token = await _authService.getIdToken();
     if (token == null) {
       setState(() => _isLoading = false);
@@ -64,6 +73,38 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
     } else {
       setState(() => _isLoading = false);
     }
+  }
+
+  void _fetchGuestDrawings() {
+    var guestDrawings = _guestService.drawings
+        .map((d) => Drawing.fromGuestDrawing(d))
+        .toList();
+
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      guestDrawings = guestDrawings
+          .where((d) => d.title.toLowerCase().contains(query))
+          .toList();
+    }
+
+    switch (_sortOption) {
+      case SortOption.newest:
+        guestDrawings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case SortOption.oldest:
+        guestDrawings.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        break;
+      case SortOption.popular:
+      case SortOption.unpopular:
+        break;
+    }
+
+    setState(() {
+      _drawings = guestDrawings;
+      _currentPage = 1;
+      _totalPages = 1;
+      _isLoading = false;
+    });
   }
 
   void _onSortChanged(SortOption? option) {
@@ -107,6 +148,13 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
     }
   }
 
+  List<SortOption> get _availableSortOptions {
+    if (_isGuest) {
+      return [SortOption.newest, SortOption.oldest];
+    }
+    return SortOption.values.toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -117,7 +165,7 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
             value: _sortOption,
             underline: const SizedBox(),
             icon: const Icon(Icons.sort),
-            items: SortOption.values.map((option) {
+            items: _availableSortOptions.map((option) {
               return DropdownMenuItem(
                 value: option,
                 child: Text(_sortLabel(option)),
@@ -134,7 +182,9 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search by artist or title...',
+                hintText: _isGuest
+                    ? 'Search by title...'
+                    : 'Search by artist or title...',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
@@ -232,6 +282,7 @@ class Drawing {
   int likeCount;
   bool isLiked;
   final DateTime createdAt;
+  final bool isGuestDrawing;
 
   Drawing({
     required this.id,
@@ -244,6 +295,7 @@ class Drawing {
     required this.likeCount,
     required this.isLiked,
     required this.createdAt,
+    this.isGuestDrawing = false,
   });
 
   factory Drawing.fromJson(Map<String, dynamic> json) {
@@ -263,6 +315,26 @@ class Drawing {
       likeCount: json['likeCount'] ?? 0,
       isLiked: json['isLiked'] ?? false,
       createdAt: DateTime.parse(json['createdAt']),
+    );
+  }
+
+  factory Drawing.fromGuestDrawing(GuestDrawing gd) {
+    final segments = gd.segments
+        .map<DrawingSegment>((s) => DrawingSegment.fromJson(s))
+        .toList();
+
+    return Drawing(
+      id: int.tryParse(gd.id) ?? 0,
+      artistName: 'Guest',
+      isOwner: true,
+      title: gd.title,
+      segments: segments,
+      commentsEnabled: false,
+      isPublic: false,
+      likeCount: 0,
+      isLiked: false,
+      createdAt: gd.createdAt,
+      isGuestDrawing: true,
     );
   }
 
@@ -331,7 +403,9 @@ class _DrawingCardState extends State<DrawingCard> {
   @override
   void initState() {
     super.initState();
-    _fetchComments();
+    if (!widget.drawing.isGuestDrawing) {
+      _fetchComments();
+    }
   }
 
   @override
@@ -341,6 +415,8 @@ class _DrawingCardState extends State<DrawingCard> {
   }
 
   Future<void> _fetchComments() async {
+    if (widget.drawing.isGuestDrawing) return;
+
     final token = await _authService.getIdToken();
     if (token == null) return;
 
@@ -468,66 +544,78 @@ class _DrawingCardState extends State<DrawingCard> {
                       '${widget.drawing.createdAt.day}/${widget.drawing.createdAt.month}/${widget.drawing.createdAt.year}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: _isLiking ? null : _toggleLike,
-                          icon: Icon(
-                            widget.drawing.isLiked
-                                ? Icons.favorite
-                                : Icons.favorite_border,
+                    if (!widget.drawing.isGuestDrawing)
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: _isLiking ? null : _toggleLike,
+                            icon: Icon(
+                              widget.drawing.isLiked
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                            ),
+                            color: Colors.red,
                           ),
-                          color: Colors.red,
-                        ),
-                        Text(
-                          '${widget.drawing.likeCount}',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
+                          Text(
+                            '${widget.drawing.likeCount}',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                if (widget.drawing.commentsEnabled)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _commentController,
-                          decoration: const InputDecoration(
-                            hintText: 'Add a comment...',
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: _isSendingComment ? null : _sendComment,
-                        icon: _isSendingComment
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.send),
-                      ),
-                    ],
-                  )
-                else
+                if (widget.drawing.isGuestDrawing) ...[
+                  const SizedBox(height: 8),
                   Text(
-                    'Comments are disabled for this drawing',
+                    'Guest drawing (saved locally)',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.grey,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
+                ] else ...[
+                  const SizedBox(height: 8),
+                  if (widget.drawing.commentsEnabled)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _commentController,
+                            decoration: const InputDecoration(
+                              hintText: 'Add a comment...',
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: _isSendingComment ? null : _sendComment,
+                          icon: _isSendingComment
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.send),
+                        ),
+                      ],
+                    )
+                  else
+                    Text(
+                      'Comments are disabled for this drawing',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                ],
                 if (_comments.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Divider(),
