@@ -316,7 +316,7 @@ class _MapScreenState extends State<MapScreen> {
                       setState(() {
                         _ink = data['inkRemaining'];
                       });
-                      if (context.mounted) Navigator.of(context).pop();
+                      if (context.mounted) Navigator.of(context).pop(true);
                     } else if (response.statusCode == 400) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -332,11 +332,14 @@ class _MapScreenState extends State<MapScreen> {
           },
         );
       },
-    ).then((_) {
+    ).then((saved) {
       setState(() {
         _isDrawing = false;
         _isPaused = false;
-        if (_currentPathPoints.isNotEmpty) {
+        if (saved == true) {
+          _polylines.clear();
+          _polylineIdCounter = 0;
+        } else if (_currentPathPoints.isNotEmpty) {
           _polylines.removeWhere((p) => p.polylineId.value == 'current');
           _polylines.add(
             Polyline(
@@ -347,8 +350,8 @@ class _MapScreenState extends State<MapScreen> {
             ),
           );
           _polylineIdCounter++;
-          _currentPathPoints = [];
         }
+        _currentPathPoints = [];
       });
     });
   }
