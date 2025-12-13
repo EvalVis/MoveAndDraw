@@ -25,6 +25,7 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
   String _searchQuery = '';
   int _currentPage = 1;
   int _totalPages = 1;
+  bool _myDrawingsOnly = false;
 
   bool get _isGuest => _guestService.isGuest;
 
@@ -54,9 +55,10 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
 
     final sortParam = _sortOption.name;
     final searchParam = Uri.encodeComponent(_searchQuery);
+    final mineParam = _myDrawingsOnly ? '&mine=true' : '';
     final response = await http.get(
       Uri.parse(
-        '${dotenv.env['BACKEND_URL']}/drawings/view?sort=$sortParam&search=$searchParam&page=$_currentPage',
+        '${dotenv.env['BACKEND_URL']}/drawings/view?sort=$sortParam&search=$searchParam&page=$_currentPage$mineParam',
       ),
       headers: {'Authorization': 'Bearer $token'},
     );
@@ -155,6 +157,15 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
     return SortOption.values.toList();
   }
 
+  void _toggleMyDrawings() {
+    setState(() {
+      _myDrawingsOnly = !_myDrawingsOnly;
+      _currentPage = 1;
+      _isLoading = true;
+    });
+    _fetchDrawings();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -176,34 +187,55 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
           const SizedBox(width: 8),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
+          preferredSize: Size.fromHeight(_isGuest ? 56 : 90),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: _isGuest
-                    ? 'Search by title...'
-                    : 'Search by artist or title...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _onSearchSubmitted('');
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: _isGuest
+                        ? 'Search by title...'
+                        : 'Search by artist or title...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              _onSearchSubmitted('');
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  ),
+                  onSubmitted: _onSearchSubmitted,
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              ),
-              onSubmitted: _onSearchSubmitted,
+                if (!_isGuest)
+                  GestureDetector(
+                    onTap: _toggleMyDrawings,
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: _myDrawingsOnly,
+                          onChanged: (_) => _toggleMyDrawings(),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        const Text('My drawings only'),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
