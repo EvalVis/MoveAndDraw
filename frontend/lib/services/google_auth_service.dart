@@ -49,7 +49,7 @@ class GoogleAuthService {
       await signInSilently();
     }
     if (_currentUser == null) return null;
-    final authentication = await _currentUser!.authentication;
+    final authentication = _currentUser!.authentication;
     return authentication.idToken;
   }
 }
