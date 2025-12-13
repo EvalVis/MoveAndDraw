@@ -220,19 +220,22 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
                   onSubmitted: _onSearchSubmitted,
                 ),
                 if (!_isGuest)
-                  GestureDetector(
-                    onTap: _toggleMyDrawings,
-                    child: Row(
-                      children: [
-                        Checkbox(
-                          value: _myDrawingsOnly,
-                          onChanged: (_) => _toggleMyDrawings(),
-                          visualDensity: VisualDensity.compact,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.tonal(
+                        onPressed: _toggleMyDrawings,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _myDrawingsOnly
+                              ? Theme.of(context).colorScheme.primaryContainer
+                              : Theme.of(context).colorScheme.surfaceContainerHighest,
+                          foregroundColor: _myDrawingsOnly
+                              ? Theme.of(context).colorScheme.onPrimaryContainer
+                              : Theme.of(context).colorScheme.onSurface,
                         ),
-                        const Text('My drawings only'),
-                      ],
+                        child: const Text('My drawings only'),
+                      ),
                     ),
                   ),
               ],
