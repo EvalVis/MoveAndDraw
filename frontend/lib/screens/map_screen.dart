@@ -162,7 +162,7 @@ class _MapScreenState extends State<MapScreen> {
         Geolocator.getPositionStream(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.high,
-            distanceFilter: 5,
+            distanceFilter: 20,
           ),
         ).listen((Position position) {
           setState(() {
