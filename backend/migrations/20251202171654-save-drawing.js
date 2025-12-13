@@ -17,9 +17,11 @@ exports.up = async function(db) {
     CREATE TABLE drawings.drawings (
       id SERIAL PRIMARY KEY,
       owner VARCHAR(100) NOT NULL,
+      owner_id VARCHAR(255) NOT NULL,
       title VARCHAR(255),
       segments JSONB,
       comments_enabled BOOLEAN DEFAULT TRUE,
+      is_public BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);

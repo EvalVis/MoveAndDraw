@@ -204,6 +204,7 @@ class _MapScreenState extends State<MapScreen> {
   void _showSaveDrawingDialog() {
     final TextEditingController nameController = TextEditingController();
     bool commentsEnabled = true;
+    bool isPublic = true;
 
     showDialog(
       context: context,
@@ -224,6 +225,17 @@ class _MapScreenState extends State<MapScreen> {
                     autofocus: true,
                   ),
                   const SizedBox(height: 16),
+                  CheckboxListTile(
+                    title: const Text('Public'),
+                    subtitle: const Text('Visible to everyone'),
+                    value: isPublic,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        isPublic = value ?? true;
+                      });
+                    },
+                    contentPadding: EdgeInsets.zero,
+                  ),
                   CheckboxListTile(
                     title: const Text('Allow comments'),
                     value: commentsEnabled,
@@ -267,6 +279,7 @@ class _MapScreenState extends State<MapScreen> {
                         'title': nameController.text,
                         'segments': segments,
                         'commentsEnabled': commentsEnabled,
+                        'isPublic': isPublic,
                       }),
                     );
                     if (response.statusCode == 201) {

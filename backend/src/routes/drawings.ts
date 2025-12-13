@@ -44,6 +44,7 @@ interface SaveDrawingBody {
   title: string
   segments: Segment[]
   commentsEnabled: boolean
+  isPublic: boolean
 }
 
 router.post('/save', async (req: Request, res: Response) => {
@@ -60,7 +61,7 @@ router.post('/save', async (req: Request, res: Response) => {
     return
   }
 
-  const { title, segments, commentsEnabled } = req.body as SaveDrawingBody
+  const { title, segments, commentsEnabled, isPublic } = req.body as SaveDrawingBody
 
   const totalPoints = segments.reduce((sum, seg) => sum + seg.points.length, 0)
 
@@ -77,8 +78,8 @@ router.post('/save', async (req: Request, res: Response) => {
   }
 
   await getPool().query(
-    `INSERT INTO drawings.drawings (owner, title, segments, comments_enabled) VALUES ($1, $2, $3, $4)`,
-    [user.name, title, JSON.stringify(segments), commentsEnabled]
+    `INSERT INTO drawings.drawings (owner, owner_id, title, segments, comments_enabled, is_public) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [user.name, user.userId, title, JSON.stringify(segments), commentsEnabled, isPublic]
   )
 
   res.status(201).json({ success: true, inkRemaining: inkResult.rows[0].ink })
@@ -99,22 +100,25 @@ router.get('/view', async (req: Request, res: Response) => {
   }
 
   const result = await getPool().query(
-    `SELECT d.id, d.title, d.segments, d.comments_enabled, d.created_at,
+    `SELECT d.id, d.owner, d.owner_id, d.title, d.segments, d.comments_enabled, d.is_public, d.created_at,
             COUNT(l.user_id) as like_count,
-            EXISTS(SELECT 1 FROM drawings.likes WHERE drawing_id = d.id AND user_id = $2) as is_liked
+            EXISTS(SELECT 1 FROM drawings.likes WHERE drawing_id = d.id AND user_id = $1) as is_liked
      FROM drawings.drawings d
      LEFT JOIN drawings.likes l ON d.id = l.drawing_id
-     WHERE d.owner = $1 
+     WHERE d.is_public = TRUE OR d.owner_id = $1
      GROUP BY d.id
      ORDER BY d.created_at DESC`,
-    [user.name, user.userId]
+    [user.userId]
   )
 
   const drawings = result.rows.map(row => ({
     id: row.id,
+    owner: row.owner,
+    isOwner: row.owner_id === user.userId,
     title: row.title,
     segments: row.segments,
     commentsEnabled: row.comments_enabled,
+    isPublic: row.is_public,
     likeCount: parseInt(row.like_count),
     isLiked: row.is_liked,
     createdAt: row.created_at

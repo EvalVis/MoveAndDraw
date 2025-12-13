@@ -49,7 +49,7 @@ class _DrawingsScreenState extends State<DrawingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('My Drawings')),
+      appBar: AppBar(title: const Text('Drawings')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _drawings.isEmpty
@@ -87,18 +87,24 @@ class DrawingSegment {
 
 class Drawing {
   final int id;
+  final String owner;
+  final bool isOwner;
   final String title;
   final List<DrawingSegment> segments;
   final bool commentsEnabled;
+  final bool isPublic;
   int likeCount;
   bool isLiked;
   final DateTime createdAt;
 
   Drawing({
     required this.id,
+    required this.owner,
+    required this.isOwner,
     required this.title,
     required this.segments,
     required this.commentsEnabled,
+    required this.isPublic,
     required this.likeCount,
     required this.isLiked,
     required this.createdAt,
@@ -112,9 +118,12 @@ class Drawing {
 
     return Drawing(
       id: json['id'],
+      owner: json['owner'] ?? '',
+      isOwner: json['isOwner'] ?? false,
       title: json['title'],
       segments: segments,
       commentsEnabled: json['commentsEnabled'] ?? true,
+      isPublic: json['isPublic'] ?? false,
       likeCount: json['likeCount'] ?? 0,
       isLiked: json['isLiked'] ?? false,
       createdAt: DateTime.parse(json['createdAt']),
@@ -281,9 +290,27 @@ class _DrawingCardState extends State<DrawingCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.drawing.title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    Icon(
+                      widget.drawing.isPublic ? Icons.lock_open : Icons.lock,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
                 Text(
-                  widget.drawing.title,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  'by ${widget.drawing.owner}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 4),
                 Row(
