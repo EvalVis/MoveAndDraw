@@ -67,7 +67,12 @@ router.post('/login', async (req: Request, res: Response) => {
     [user.userId, INITIAL_INK]
   )
 
-  res.json({ success: true })
+  const artistNameResult = await getPool().query(
+    `SELECT artist_name FROM "user".artist_name WHERE user_id = $1`,
+    [user.userId]
+  )
+
+  res.json({ success: true, artistName: artistNameResult.rows[0].artist_name })
 })
 
 router.get('/ink', async (req: Request, res: Response) => {
@@ -102,6 +107,47 @@ router.get('/ink', async (req: Request, res: Response) => {
   }
 
   res.json({ ink: result.rows[0].ink })
+})
+
+router.put('/artist-name', async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Missing token' })
+    return
+  }
+
+  const token = authHeader.slice(7)
+  const user = await verifyToken(token)
+  if (!user) {
+    res.status(401).json({ error: 'Invalid token' })
+    return
+  }
+
+  const { artistName } = req.body
+  if (!artistName || typeof artistName !== 'string' || artistName.trim().length === 0) {
+    res.status(400).json({ error: 'Artist name is required' })
+    return
+  }
+
+  const trimmedName = artistName.trim()
+  if (trimmedName.length > 100) {
+    res.status(400).json({ error: 'Artist name too long' })
+    return
+  }
+
+  try {
+    await getPool().query(
+      `UPDATE "user".artist_name SET artist_name = $2 WHERE user_id = $1`,
+      [user.userId, trimmedName]
+    )
+    res.json({ success: true, artistName: trimmedName })
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
+      res.status(409).json({ error: 'Artist name already taken' })
+      return
+    }
+    throw err
+  }
 })
 
 export default router

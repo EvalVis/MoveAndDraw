@@ -31,6 +31,7 @@ class _MapScreenState extends State<MapScreen> {
   Color _currentSegmentColor = Colors.red;
   int _ink = 0;
   Timer? _inkRefreshTimer;
+  String? _artistName;
 
   @override
   void initState() {
@@ -39,6 +40,91 @@ class _MapScreenState extends State<MapScreen> {
     _startLocationTracking();
     _fetchInk();
     _startInkRefreshTimer();
+    _fetchArtistName();
+  }
+
+  Future<void> _fetchArtistName() async {
+    final token = await _authService.getIdToken();
+    if (token == null) return;
+
+    final response = await http.post(
+      Uri.parse('${dotenv.env['BACKEND_URL']}/user/login'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      setState(() => _artistName = data['artistName']);
+    }
+  }
+
+  Future<void> _showChangeArtistNameDialog() async {
+    final controller = TextEditingController(text: _artistName);
+    String? errorMessage;
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Change Artist Name'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  labelText: 'Artist Name',
+                  errorText: errorMessage,
+                ),
+                maxLength: 100,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final newName = controller.text.trim();
+                if (newName.isEmpty) {
+                  setDialogState(() => errorMessage = 'Name cannot be empty');
+                  return;
+                }
+
+                final token = await _authService.getIdToken();
+                if (token == null) return;
+
+                final response = await http.put(
+                  Uri.parse('${dotenv.env['BACKEND_URL']}/user/artist-name'),
+                  headers: {
+                    'Authorization': 'Bearer $token',
+                    'Content-Type': 'application/json',
+                  },
+                  body: jsonEncode({'artistName': newName}),
+                );
+
+                if (response.statusCode == 200) {
+                  if (context.mounted) Navigator.pop(context, newName);
+                } else if (response.statusCode == 409) {
+                  setDialogState(() => errorMessage = 'Name already taken');
+                } else {
+                  setDialogState(() => errorMessage = 'Failed to update');
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null) {
+      setState(() => _artistName = result);
+    }
+
+    controller.dispose();
   }
 
   void _startInkRefreshTimer() {
@@ -439,13 +525,16 @@ class _MapScreenState extends State<MapScreen> {
           if (user != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: CircleAvatar(
-                backgroundImage: user.photoUrl != null
-                    ? NetworkImage(user.photoUrl!)
-                    : null,
-                child: user.photoUrl == null
-                    ? Text(user.displayName?[0] ?? 'U')
-                    : null,
+              child: GestureDetector(
+                onTap: _showChangeArtistNameDialog,
+                child: CircleAvatar(
+                  backgroundImage: user.photoUrl != null
+                      ? NetworkImage(user.photoUrl!)
+                      : null,
+                  child: user.photoUrl == null
+                      ? Text(user.displayName?[0] ?? 'U')
+                      : null,
+                ),
               ),
             ),
           IconButton(

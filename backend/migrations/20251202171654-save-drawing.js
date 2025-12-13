@@ -17,7 +17,7 @@ exports.up = async function(db) {
   await db.runSql(`
     CREATE TABLE "user".artist_name (
       user_id VARCHAR(255) PRIMARY KEY,
-      artist_name VARCHAR(100) NOT NULL
+      artist_name VARCHAR(100) NOT NULL UNIQUE
     );
   `);
 
@@ -62,12 +62,8 @@ exports.up = async function(db) {
 };
 
 exports.down = async function(db) {
-  await db.runSql(`DROP TABLE drawings.user_ink;`);
-  await db.runSql(`DROP TABLE drawings.comments;`);
-  await db.runSql(`DROP TABLE drawings.likes;`);
-  await db.runSql(`DROP TABLE drawings.drawings;`);
   await db.runSql(`DROP SCHEMA drawings CASCADE;`);
-  //await db.runSql(`DROP SCHEMA "user" CASCADE;`);
+  await db.runSql(`DROP SCHEMA "user" CASCADE;`);
 };
 
 exports._meta = {
