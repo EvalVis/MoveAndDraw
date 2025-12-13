@@ -422,34 +422,34 @@ class _MapScreenState extends State<MapScreen> {
             ),
             const SizedBox(width: 8),
             if (!_isDrawing)
-              ElevatedButton.icon(
+              IconButton(
                 onPressed: _startDrawing,
-                style: ElevatedButton.styleFrom(
+                icon: const Icon(Icons.play_arrow),
+                tooltip: 'Start Drawing',
+                style: IconButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
                 ),
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('Start Drawing'),
               )
             else ...[
-              ElevatedButton.icon(
+              IconButton(
                 onPressed: _togglePause,
-                style: ElevatedButton.styleFrom(
+                icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause),
+                tooltip: _isPaused ? 'Continue' : 'Pause',
+                style: IconButton.styleFrom(
                   backgroundColor: _isPaused ? Colors.green : Colors.orange,
                   foregroundColor: Colors.white,
                 ),
-                icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause),
-                label: Text(_isPaused ? 'Continue' : 'Pause'),
               ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
+              const SizedBox(width: 4),
+              IconButton(
                 onPressed: _stopDrawing,
-                style: ElevatedButton.styleFrom(
+                icon: const Icon(Icons.stop),
+                tooltip: 'Stop',
+                style: IconButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
                 ),
-                icon: const Icon(Icons.stop),
-                label: const Text('Stop'),
               ),
             ],
           ],
