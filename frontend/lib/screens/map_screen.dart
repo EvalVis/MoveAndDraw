@@ -257,90 +257,99 @@ class _MapScreenState extends State<MapScreen> {
 
   void _showGuestSaveDialog() {
     final nameController = TextEditingController();
+    bool isSaving = false;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Save Drawing'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Drawing Name',
-                hintText: 'Enter a name for your drawing',
-              ),
-              autofocus: true,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Guest drawings are saved locally only',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Discard Drawing?'),
-                  content: const Text('Are you sure? Your drawing will be discarded.'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('No'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('Yes'),
-                    ),
-                  ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Save Drawing'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Drawing Name',
+                  hintText: 'Enter a name for your drawing',
                 ),
-              );
-              if (confirm == true && context.mounted) {
-                Navigator.of(context).pop('discard');
-              }
-            },
-            child: const Text('Discard'),
+                autofocus: true,
+                enabled: !isSaving,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Guest drawings are saved locally only',
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () async {
-              final segments = <Map<String, dynamic>>[];
-              for (final polyline in _polylines) {
-                final points = polyline.points
-                    .map((p) => [p.longitude, p.latitude])
-                    .toList();
-                final colorHex =
-                    '#${polyline.color.value.toRadixString(16).substring(2).toUpperCase()}';
-                segments.add({'points': points, 'color': colorHex});
-              }
+          actions: isSaving
+              ? [const Center(child: CircularProgressIndicator())]
+              : [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Discard Drawing?'),
+                          content: const Text('Are you sure? Your drawing will be discarded.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('No'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Yes'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true && context.mounted) {
+                        Navigator.of(context).pop('discard');
+                      }
+                    },
+                    child: const Text('Discard'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      setDialogState(() => isSaving = true);
+                      
+                      final segments = <Map<String, dynamic>>[];
+                      for (final polyline in _polylines) {
+                        final points = polyline.points
+                            .map((p) => [p.longitude, p.latitude])
+                            .toList();
+                        final colorHex =
+                            '#${polyline.color.value.toRadixString(16).substring(2).toUpperCase()}';
+                        segments.add({'points': points, 'color': colorHex});
+                      }
 
-              final success = await _guestService.saveDrawing(
-                title: nameController.text,
-                segments: segments,
-              );
+                      final success = await _guestService.saveDrawing(
+                        title: nameController.text,
+                        segments: segments,
+                      );
 
-              if (success) {
-                setState(() => _ink = _guestService.ink);
-                if (context.mounted) Navigator.of(context).pop(true);
-              } else {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Not enough ink!')),
-                  );
-                }
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
+                      if (success) {
+                        setState(() => _ink = _guestService.ink);
+                        if (context.mounted) Navigator.of(context).pop(true);
+                      } else {
+                        setDialogState(() => isSaving = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Not enough ink!')),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Save'),
+                  ),
+                ],
+        ),
       ),
     ).then((saved) => _handleSaveDialogClose(saved));
   }
@@ -349,6 +358,7 @@ class _MapScreenState extends State<MapScreen> {
     final TextEditingController nameController = TextEditingController();
     bool commentsEnabled = true;
     bool isPublic = true;
+    bool isSaving = false;
 
     showDialog(
       context: context,
@@ -367,13 +377,14 @@ class _MapScreenState extends State<MapScreen> {
                       hintText: 'Enter a name for your drawing',
                     ),
                     autofocus: true,
+                    enabled: !isSaving,
                   ),
                   const SizedBox(height: 16),
                   CheckboxListTile(
                     title: const Text('Public'),
                     subtitle: const Text('Visible to everyone'),
                     value: isPublic,
-                    onChanged: (value) {
+                    onChanged: isSaving ? null : (value) {
                       setDialogState(() {
                         isPublic = value ?? true;
                       });
@@ -383,7 +394,7 @@ class _MapScreenState extends State<MapScreen> {
                   CheckboxListTile(
                     title: const Text('Allow comments'),
                     value: commentsEnabled,
-                    onChanged: (value) {
+                    onChanged: isSaving ? null : (value) {
                       setDialogState(() {
                         commentsEnabled = value ?? true;
                       });
@@ -392,80 +403,90 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Discard Drawing?'),
-                        content: const Text('Are you sure? Your drawing will be discarded.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(false),
-                            child: const Text('No'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: const Text('Yes'),
-                          ),
-                        ],
+              actions: isSaving
+                  ? [const Center(child: CircularProgressIndicator())]
+                  : [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
                       ),
-                    );
-                    if (confirm == true && context.mounted) {
-                      Navigator.of(context).pop('discard');
-                    }
-                  },
-                  child: const Text('Discard'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final token = await _authService.getIdToken();
-                    if (token == null) return;
+                      TextButton(
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Discard Drawing?'),
+                              content: const Text('Are you sure? Your drawing will be discarded.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(false),
+                                  child: const Text('No'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(true),
+                                  child: const Text('Yes'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true && context.mounted) {
+                            Navigator.of(context).pop('discard');
+                          }
+                        },
+                        child: const Text('Discard'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          setDialogState(() => isSaving = true);
+                          
+                          final token = await _authService.getIdToken();
+                          if (token == null) {
+                            setDialogState(() => isSaving = false);
+                            return;
+                          }
 
-                    final segments = <Map<String, dynamic>>[];
-                    for (final polyline in _polylines) {
-                      final points = polyline.points
-                          .map((p) => [p.longitude, p.latitude])
-                          .toList();
-                      final colorHex =
-                          '#${polyline.color.value.toRadixString(16).substring(2).toUpperCase()}';
-                      segments.add({'points': points, 'color': colorHex});
-                    }
-                    final response = await http.post(
-                      Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/save'),
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer $token',
-                      },
-                      body: jsonEncode({
-                        'title': nameController.text,
-                        'segments': segments,
-                        'commentsEnabled': commentsEnabled,
-                        'isPublic': isPublic,
-                      }),
-                    );
-                    if (response.statusCode == 201) {
-                      final data = jsonDecode(response.body);
-                      setState(() {
-                        _ink = data['inkRemaining'];
-                      });
-                      if (context.mounted) Navigator.of(context).pop(true);
-                    } else if (response.statusCode == 400) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Not enough ink!')),
-                        );
-                      }
-                    }
-                  },
-                  child: const Text('Submit'),
-                ),
-              ],
+                          final segments = <Map<String, dynamic>>[];
+                          for (final polyline in _polylines) {
+                            final points = polyline.points
+                                .map((p) => [p.longitude, p.latitude])
+                                .toList();
+                            final colorHex =
+                                '#${polyline.color.value.toRadixString(16).substring(2).toUpperCase()}';
+                            segments.add({'points': points, 'color': colorHex});
+                          }
+                          final response = await http.post(
+                            Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/save'),
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': 'Bearer $token',
+                            },
+                            body: jsonEncode({
+                              'title': nameController.text,
+                              'segments': segments,
+                              'commentsEnabled': commentsEnabled,
+                              'isPublic': isPublic,
+                            }),
+                          );
+                          if (response.statusCode == 201) {
+                            final data = jsonDecode(response.body);
+                            setState(() {
+                              _ink = data['inkRemaining'];
+                            });
+                            if (context.mounted) Navigator.of(context).pop(true);
+                          } else if (response.statusCode == 400) {
+                            setDialogState(() => isSaving = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Not enough ink!')),
+                              );
+                            }
+                          } else {
+                            setDialogState(() => isSaving = false);
+                          }
+                        },
+                        child: const Text('Submit'),
+                      ),
+                    ],
             );
           },
         );
