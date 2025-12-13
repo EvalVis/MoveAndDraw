@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../services/google_auth_service.dart';
 import 'login_screen.dart';
+import 'change_artist_name_dialog.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -59,72 +60,14 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _showChangeArtistNameDialog() async {
-    final controller = TextEditingController(text: _artistName);
-    String? errorMessage;
-
     final result = await showDialog<String>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Change Artist Name'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  labelText: 'Artist Name',
-                  errorText: errorMessage,
-                ),
-                maxLength: 100,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final newName = controller.text.trim();
-                if (newName.isEmpty) {
-                  setDialogState(() => errorMessage = 'Name cannot be empty');
-                  return;
-                }
-
-                final token = await _authService.getIdToken();
-                if (token == null) return;
-
-                final response = await http.put(
-                  Uri.parse('${dotenv.env['BACKEND_URL']}/user/artist-name'),
-                  headers: {
-                    'Authorization': 'Bearer $token',
-                    'Content-Type': 'application/json',
-                  },
-                  body: jsonEncode({'artistName': newName}),
-                );
-
-                if (response.statusCode == 200) {
-                  if (context.mounted) Navigator.pop(context, newName);
-                } else if (response.statusCode == 409) {
-                  setDialogState(() => errorMessage = 'Name already taken');
-                } else {
-                  setDialogState(() => errorMessage = 'Failed to update');
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
+      builder: (context) => ChangeArtistNameDialog(currentName: _artistName),
     );
 
     if (result != null) {
       setState(() => _artistName = result);
     }
-
-    controller.dispose();
   }
 
   void _startInkRefreshTimer() {
