@@ -431,8 +431,6 @@ class DrawingCard extends StatefulWidget {
 class _DrawingCardState extends State<DrawingCard> {
   final _authService = GoogleAuthService();
   final _commentController = TextEditingController();
-  bool _isLiking = false;
-  bool _isSendingComment = false;
   List<Comment> _comments = [];
   int _commentPage = 1;
   int _commentTotalPages = 1;
@@ -577,7 +575,7 @@ class _DrawingCardState extends State<DrawingCard> {
                       Row(
                         children: [
                           IconButton(
-                            onPressed: _isLiking ? null : _toggleLike,
+                            onPressed: _toggleLike,
                             icon: Icon(
                               widget.drawing.isLiked
                                   ? Icons.favorite
@@ -623,16 +621,8 @@ class _DrawingCardState extends State<DrawingCard> {
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          onPressed: _isSendingComment ? null : _sendComment,
-                          icon: _isSendingComment
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.send),
+                          onPressed: _sendComment,
+                          icon: const Icon(Icons.send),
                         ),
                       ],
                     )
