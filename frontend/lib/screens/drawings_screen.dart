@@ -434,14 +434,8 @@ class _DrawingCardState extends State<DrawingCard> {
   List<Comment> _comments = [];
   int _commentPage = 1;
   int _commentTotalPages = 1;
-
-  @override
-  void initState() {
-    super.initState();
-    if (!widget.drawing.isGuestDrawing) {
-      _fetchComments();
-    }
-  }
+  bool _showComments = false;
+  bool _commentsLoaded = false;
 
   @override
   void dispose() {
@@ -477,6 +471,14 @@ class _DrawingCardState extends State<DrawingCard> {
     if (page < 1 || page > _commentTotalPages || page == _commentPage) return;
     setState(() => _commentPage = page);
     _fetchComments();
+  }
+
+  void _toggleShowComments() {
+    setState(() => _showComments = !_showComments);
+    if (_showComments && !_commentsLoaded) {
+      _commentsLoaded = true;
+      _fetchComments();
+    }
   }
 
   Future<void> _sendComment() async {
@@ -603,6 +605,24 @@ class _DrawingCardState extends State<DrawingCard> {
                 ] else ...[
                   const SizedBox(height: 8),
                   if (widget.drawing.commentsEnabled)
+                    TextButton.icon(
+                      onPressed: _toggleShowComments,
+                      icon: Icon(
+                        _showComments ? Icons.expand_less : Icons.expand_more,
+                      ),
+                      label: Text(
+                        _showComments ? 'Hide comments' : 'View comments',
+                      ),
+                    )
+                  else
+                    Text(
+                      'Comments are disabled for this drawing',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  if (_showComments && widget.drawing.commentsEnabled) ...[
                     Row(
                       children: [
                         Expanded(
@@ -625,59 +645,52 @@ class _DrawingCardState extends State<DrawingCard> {
                           icon: const Icon(Icons.send),
                         ),
                       ],
-                    )
-                  else
-                    Text(
-                      'Comments are disabled for this drawing',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey,
-                        fontStyle: FontStyle.italic,
-                      ),
                     ),
-                ],
-                if (_comments.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Divider(),
-                  ..._comments.map(
-                    (comment) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            comment.artistName,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                    if (_comments.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      const Divider(),
+                      ..._comments.map(
+                        (comment) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                comment.artistName,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              Text(comment.content),
+                            ],
                           ),
-                          Text(comment.content),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                  if (_commentTotalPages > 1)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          onPressed: _commentPage > 1
-                              ? () => _goToCommentPage(_commentPage - 1)
-                              : null,
-                          icon: const Icon(Icons.chevron_left, size: 20),
-                          visualDensity: VisualDensity.compact,
+                      if (_commentTotalPages > 1)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              onPressed: _commentPage > 1
+                                  ? () => _goToCommentPage(_commentPage - 1)
+                                  : null,
+                              icon: const Icon(Icons.chevron_left, size: 20),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            Text(
+                              '$_commentPage / $_commentTotalPages',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            IconButton(
+                              onPressed: _commentPage < _commentTotalPages
+                                  ? () => _goToCommentPage(_commentPage + 1)
+                                  : null,
+                              icon: const Icon(Icons.chevron_right, size: 20),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
                         ),
-                        Text(
-                          '$_commentPage / $_commentTotalPages',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        IconButton(
-                          onPressed: _commentPage < _commentTotalPages
-                              ? () => _goToCommentPage(_commentPage + 1)
-                              : null,
-                          icon: const Icon(Icons.chevron_right, size: 20),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ],
-                    ),
+                    ],
+                  ],
                 ],
               ],
             ),
