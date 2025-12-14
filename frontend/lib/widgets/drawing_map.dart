@@ -30,7 +30,7 @@ class _DrawingMapState extends State<DrawingMap> {
           polylineId: PolylineId('segment_${widget.drawing.id}_$i'),
           points: segment.points,
           color: segment.color,
-          width: 3,
+          width: segment.width,
         ),
       );
     }

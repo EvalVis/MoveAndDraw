@@ -8,12 +8,15 @@ class DrawingController extends ChangeNotifier {
   bool _isPaused = false;
   Color _selectedColor = Colors.red;
   Color _currentSegmentColor = Colors.red;
+  int _selectedBrushSize = 5;
+  int _currentSegmentBrushSize = 5;
   int _polylineIdCounter = 0;
 
   Set<Polyline> get polylines => _polylines;
   bool get isDrawing => _isDrawing;
   bool get isPaused => _isPaused;
   Color get selectedColor => _selectedColor;
+  int get selectedBrushSize => _selectedBrushSize;
 
   int get totalPoints {
     int total = 0;
@@ -28,6 +31,7 @@ class DrawingController extends ChangeNotifier {
     _isPaused = false;
     _currentPathPoints = [];
     _currentSegmentColor = _selectedColor;
+    _currentSegmentBrushSize = _selectedBrushSize;
     if (currentPosition != null) {
       _currentPathPoints.add(currentPosition);
     }
@@ -38,6 +42,7 @@ class DrawingController extends ChangeNotifier {
     if (_isPaused) {
       _currentPathPoints = [];
       _currentSegmentColor = _selectedColor;
+      _currentSegmentBrushSize = _selectedBrushSize;
       if (currentPosition != null) {
         _currentPathPoints.add(currentPosition);
       }
@@ -66,7 +71,7 @@ class DrawingController extends ChangeNotifier {
         polylineId: const PolylineId('current'),
         points: List.from(_currentPathPoints),
         color: _currentSegmentColor,
-        width: 5,
+        width: _currentSegmentBrushSize,
       ),
     );
     notifyListeners();
@@ -78,6 +83,16 @@ class DrawingController extends ChangeNotifier {
       _finalizeCurrentSegment();
     } else if (_isDrawing) {
       _currentSegmentColor = color;
+    }
+    notifyListeners();
+  }
+
+  void changeBrushSize(int size) {
+    _selectedBrushSize = size;
+    if (_isDrawing && _currentPathPoints.length >= 2) {
+      _finalizeCurrentSegment();
+    } else if (_isDrawing) {
+      _currentSegmentBrushSize = size;
     }
     notifyListeners();
   }
@@ -95,7 +110,7 @@ class DrawingController extends ChangeNotifier {
           polylineId: PolylineId('path_$_polylineIdCounter'),
           points: List.from(_currentPathPoints),
           color: _currentSegmentColor,
-          width: 5,
+          width: _currentSegmentBrushSize,
         ),
       );
       _polylineIdCounter++;
@@ -112,7 +127,11 @@ class DrawingController extends ChangeNotifier {
           .toList();
       final colorHex =
           '#${polyline.color.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
-      segments.add({'points': points, 'color': colorHex});
+      segments.add({
+        'points': points,
+        'color': colorHex,
+        'width': polyline.width,
+      });
     }
     return segments;
   }
@@ -125,7 +144,7 @@ class DrawingController extends ChangeNotifier {
           polylineId: PolylineId('path_$_polylineIdCounter'),
           points: List.from(_currentPathPoints),
           color: _currentSegmentColor,
-          width: 5,
+          width: _currentSegmentBrushSize,
         ),
       );
       _polylineIdCounter++;
@@ -133,6 +152,7 @@ class DrawingController extends ChangeNotifier {
       final lastPoint = _currentPathPoints.last;
       _currentPathPoints = [lastPoint];
       _currentSegmentColor = _selectedColor;
+      _currentSegmentBrushSize = _selectedBrushSize;
     }
   }
 }

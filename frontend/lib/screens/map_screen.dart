@@ -154,6 +154,8 @@ class _MapScreenState extends State<MapScreen> {
       appBar: MapAppBar(
         selectedColor: _drawingController.selectedColor,
         onColorChanged: _drawingController.changeColor,
+        selectedBrushSize: _drawingController.selectedBrushSize,
+        onBrushSizeChanged: _drawingController.changeBrushSize,
         isDrawing: _drawingController.isDrawing,
         isPaused: _drawingController.isPaused,
         onStartDrawing: () => _drawingController.startDrawing(_currentLatLng()),

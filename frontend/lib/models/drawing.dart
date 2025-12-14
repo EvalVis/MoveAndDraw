@@ -7,8 +7,13 @@ enum SortOption { popular, unpopular, newest, oldest }
 class DrawingSegment {
   final List<LatLng> points;
   final Color color;
+  final int width;
 
-  DrawingSegment({required this.points, required this.color});
+  DrawingSegment({
+    required this.points,
+    required this.color,
+    required this.width,
+  });
 
   factory DrawingSegment.fromJson(Map<String, dynamic> json) {
     final coords = json['points'] as List;
@@ -20,7 +25,12 @@ class DrawingSegment {
     final colorValue = hexValue.length == 8
         ? int.parse(hexValue, radix: 16)
         : int.parse(hexValue, radix: 16) + 0xFF000000;
-    return DrawingSegment(points: points, color: Color(colorValue));
+    final width = (json['width'] as num?)?.toInt() ?? 5;
+    return DrawingSegment(
+      points: points,
+      color: Color(colorValue),
+      width: width,
+    );
   }
 }
 
