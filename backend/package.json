@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@types/cors": "^2.8.19",
-    "@types/pg": "^8.15.6",
+    "@types/pg": "^8.16.0",
     "cors": "^2.8.5",
     "db-migrate": "^0.11.14",
     "db-migrate-pg": "^1.5.2",
