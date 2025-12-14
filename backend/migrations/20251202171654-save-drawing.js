@@ -54,7 +54,7 @@ exports.up = async function(db) {
       id SERIAL PRIMARY KEY,
       drawing_id INTEGER REFERENCES drawings.drawings(id) ON DELETE CASCADE,
       artist_name VARCHAR(100) NOT NULL,
-      content TEXT NOT NULL,
+      content VARCHAR(1000) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
