@@ -65,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
             end: Alignment.bottomRight,
             colors: [
               Theme.of(context).primaryColor,
-              Theme.of(context).primaryColor.withOpacity(0.7),
+              Theme.of(context).primaryColor.withValues(alpha: 0.7),
             ],
           ),
         ),
@@ -93,10 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 12),
                   const Text(
                     'Turn your fitness journey into art',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.white70),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 60),
@@ -154,5 +151,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
-
