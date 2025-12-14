@@ -63,6 +63,21 @@ router.post('/save', async (req: Request, res: Response) => {
 
   const { title, segments, commentsEnabled, isPublic } = req.body as SaveDrawingBody
 
+  if (!title || typeof title !== 'string' || title.trim().length === 0) {
+    res.status(400).json({ error: 'Title is required' })
+    return
+  }
+
+  if (title.length > 200) {
+    res.status(400).json({ error: 'Title too long' })
+    return
+  }
+
+  if (!Array.isArray(segments)) {
+    res.status(400).json({ error: 'Invalid segments' })
+    return
+  }
+
   const hasValidSegments = segments.some(seg => seg.points.length >= 2)
   if (!hasValidSegments) {
     res.status(400).json({ error: 'Drawing must have at least one segment with 2 or more points' })
@@ -195,27 +210,32 @@ router.post('/like/:id', async (req: Request, res: Response) => {
   }
 
   const { id } = req.params
+  const drawingId = parseInt(id, 10)
+  if (isNaN(drawingId)) {
+    res.status(400).json({ error: 'Invalid drawing ID' })
+    return
+  }
 
   const existing = await getPool().query(
     `SELECT 1 FROM drawings.likes WHERE drawing_id = $1 AND user_id = $2`,
-    [id, user.userId]
+    [drawingId, user.userId]
   )
 
   if (existing.rowCount && existing.rowCount > 0) {
     await getPool().query(
       `DELETE FROM drawings.likes WHERE drawing_id = $1 AND user_id = $2`,
-      [id, user.userId]
+      [drawingId, user.userId]
     )
   } else {
     await getPool().query(
       `INSERT INTO drawings.likes (drawing_id, user_id) VALUES ($1, $2)`,
-      [id, user.userId]
+      [drawingId, user.userId]
     )
   }
 
   const countResult = await getPool().query(
     `SELECT COUNT(*) as like_count FROM drawings.likes WHERE drawing_id = $1`,
-    [id]
+    [drawingId]
   )
 
   const isLiked = !(existing.rowCount && existing.rowCount > 0)

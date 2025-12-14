@@ -56,6 +56,21 @@ router.post('/save', async (req: Request, res: Response) => {
 
   const { drawingId, content } = req.body as SaveCommentBody
 
+  if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    res.status(400).json({ error: 'Comment content is required' })
+    return
+  }
+
+  if (content.length > 1000) {
+    res.status(400).json({ error: 'Comment too long' })
+    return
+  }
+
+  if (!drawingId || typeof drawingId !== 'number') {
+    res.status(400).json({ error: 'Invalid drawing ID' })
+    return
+  }
+
   const drawingResult = await getPool().query(
     `SELECT comments_enabled FROM drawings.drawings WHERE id = $1`,
     [drawingId]
