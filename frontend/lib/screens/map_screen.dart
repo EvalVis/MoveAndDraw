@@ -468,8 +468,9 @@ class _MapScreenState extends State<MapScreen> {
                             setState(() {
                               _ink = data['inkRemaining'];
                             });
-                            if (context.mounted)
+                            if (context.mounted) {
                               Navigator.of(context).pop(true);
+                            }
                           } else if (response.statusCode == 400) {
                             setDialogState(() => isSaving = false);
                             if (context.mounted) {
