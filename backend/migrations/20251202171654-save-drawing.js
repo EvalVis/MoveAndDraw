@@ -32,8 +32,7 @@ exports.up = async function(db) {
   await db.runSql(`
     CREATE TABLE drawings.drawings (
       id SERIAL PRIMARY KEY,
-      artist_name VARCHAR(100) NOT NULL,
-      owner_id VARCHAR(255) NOT NULL,
+      owner_id VARCHAR(255) NOT NULL REFERENCES "user".artist_name(user_id) ON DELETE CASCADE,
       title VARCHAR(255),
       segments JSONB,
       comments_enabled BOOLEAN DEFAULT TRUE,

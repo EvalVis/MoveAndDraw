@@ -99,8 +99,8 @@ router.post('/save', async (req: Request, res: Response) => {
   }
 
   await getPool().query(
-    `INSERT INTO drawings.drawings (artist_name, owner_id, title, segments, comments_enabled, is_public) VALUES ($1, $2, $3, $4, $5, $6)`,
-    [user.name, user.userId, title, JSON.stringify(segments), commentsEnabled, isPublic]
+    `INSERT INTO drawings.drawings (owner_id, title, segments, comments_enabled, is_public) VALUES ($1, $2, $3, $4, $5)`,
+    [user.userId, title.trim(), JSON.stringify(segments), commentsEnabled, isPublic]
   )
 
   res.status(201).json({ success: true, inkRemaining: inkResult.rows[0].ink })
@@ -147,7 +147,7 @@ router.get('/view', async (req: Request, res: Response) => {
     : '(d.is_public = TRUE OR d.owner_id = $1)'
 
   const searchClause = search
-    ? 'AND (d.artist_name ILIKE $2 OR d.title ILIKE $2)'
+    ? 'AND (a.artist_name ILIKE $2 OR d.title ILIKE $2)'
     : ''
   const baseParams = search
     ? [user.userId, `%${search}%`]
@@ -156,6 +156,7 @@ router.get('/view', async (req: Request, res: Response) => {
   const countResult = await getPool().query(
     `SELECT COUNT(DISTINCT d.id) as total
      FROM drawings.drawings d
+     JOIN "user".artist_name a ON d.owner_id = a.user_id
      WHERE ${visibilityClause} ${searchClause}`,
     baseParams
   )
@@ -167,13 +168,14 @@ router.get('/view', async (req: Request, res: Response) => {
   const params = [...baseParams, limit, offset]
 
   const result = await getPool().query(
-    `SELECT d.id, d.artist_name, d.owner_id, d.title, d.segments, d.comments_enabled, d.is_public, d.created_at,
+    `SELECT d.id, a.artist_name, d.owner_id, d.title, d.segments, d.comments_enabled, d.is_public, d.created_at,
             COUNT(l.user_id) as like_count,
             EXISTS(SELECT 1 FROM drawings.likes WHERE drawing_id = d.id AND user_id = $1) as is_liked
      FROM drawings.drawings d
+     JOIN "user".artist_name a ON d.owner_id = a.user_id
      LEFT JOIN drawings.likes l ON d.id = l.drawing_id
      WHERE ${visibilityClause} ${searchClause}
-     GROUP BY d.id
+     GROUP BY d.id, a.artist_name
      ${orderClause}
      LIMIT $${limitParam} OFFSET $${offsetParam}`,
     params
