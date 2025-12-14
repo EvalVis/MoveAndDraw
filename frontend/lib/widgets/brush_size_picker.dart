@@ -60,17 +60,44 @@ class _BrushSizePickerState extends State<BrushSizePicker> {
                     const SizedBox(height: 8),
                     StatefulBuilder(
                       builder: (context, setSliderState) {
-                        return Slider(
-                          value: widget.selectedSize.toDouble(),
-                          min: 1,
-                          max: 100,
-                          divisions: 19,
-                          label: widget.selectedSize.toString(),
-                          onChanged: (value) {
-                            widget.onSizeChanged(value.toInt());
-                            setSliderState(() {});
-                            _overlayEntry?.markNeedsBuild();
-                          },
+                        void updateSize(int newSize) {
+                          final clamped = newSize.clamp(1, 100);
+                          widget.onSizeChanged(clamped);
+                          setSliderState(() {});
+                          _overlayEntry?.markNeedsBuild();
+                        }
+
+                        return Row(
+                          children: [
+                            IconButton(
+                              onPressed: widget.selectedSize > 1
+                                  ? () => updateSize(widget.selectedSize - 1)
+                                  : null,
+                              icon: const Icon(Icons.remove),
+                              iconSize: 20,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                            Expanded(
+                              child: Slider(
+                                value: widget.selectedSize.toDouble(),
+                                min: 1,
+                                max: 100,
+                                divisions: 99,
+                                label: widget.selectedSize.toString(),
+                                onChanged: (value) => updateSize(value.toInt()),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: widget.selectedSize < 100
+                                  ? () => updateSize(widget.selectedSize + 1)
+                                  : null,
+                              icon: const Icon(Icons.add),
+                              iconSize: 20,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
                         );
                       },
                     ),
