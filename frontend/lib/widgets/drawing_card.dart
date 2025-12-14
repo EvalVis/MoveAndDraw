@@ -51,6 +51,12 @@ class _DrawingCardState extends State<DrawingCard> {
           Stack(
             children: [
               SizedBox(height: 200, child: DrawingMap(drawing: widget.drawing)),
+              Positioned.fill(
+                child: GestureDetector(
+                  onDoubleTap: _openFullscreen,
+                  behavior: HitTestBehavior.translucent,
+                ),
+              ),
               Positioned(
                 right: 8,
                 top: 8,
