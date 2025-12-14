@@ -16,10 +16,6 @@ app.use('/drawings', drawingsRouter)
 app.use('/drawings/comments', commentsRouter)
 app.use('/user', userRouter)
 
-app.get('/ping', (req: Request, res: Response) => {
-  res.send('Pong')
-})
-
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('Unhandled error:', err.message)
   res.status(500).json({ error: 'Internal server error' })
