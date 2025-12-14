@@ -1,0 +1,144 @@
+import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'color_picker_button.dart';
+import 'drawing_controls.dart';
+
+class MapAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final Color selectedColor;
+  final ValueChanged<Color> onColorChanged;
+  final bool isDrawing;
+  final bool isPaused;
+  final VoidCallback onStartDrawing;
+  final VoidCallback onTogglePause;
+  final VoidCallback onStopDrawing;
+  final int ink;
+  final int totalPoints;
+  final bool isGuest;
+  final GoogleSignInAccount? user;
+  final VoidCallback? onUserAvatarTap;
+  final VoidCallback onSignOut;
+
+  const MapAppBar({
+    super.key,
+    required this.selectedColor,
+    required this.onColorChanged,
+    required this.isDrawing,
+    required this.isPaused,
+    required this.onStartDrawing,
+    required this.onTogglePause,
+    required this.onStopDrawing,
+    required this.ink,
+    required this.totalPoints,
+    required this.isGuest,
+    required this.user,
+    required this.onUserAvatarTap,
+    required this.onSignOut,
+  });
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ColorPickerButton(
+            selectedColor: selectedColor,
+            onColorChanged: onColorChanged,
+          ),
+          const SizedBox(width: 8),
+          DrawingControls(
+            isDrawing: isDrawing,
+            isPaused: isPaused,
+            onStart: onStartDrawing,
+            onTogglePause: onTogglePause,
+            onStop: onStopDrawing,
+          ),
+        ],
+      ),
+      actions: [
+        _InkDisplay(ink: ink, totalPoints: totalPoints, isDrawing: isDrawing),
+        _UserAvatar(
+          isGuest: isGuest,
+          user: user,
+          onTap: onUserAvatarTap,
+        ),
+        IconButton(
+          icon: const Icon(Icons.logout),
+          onPressed: onSignOut,
+          tooltip: 'Sign out',
+        ),
+      ],
+    );
+  }
+}
+
+class _InkDisplay extends StatelessWidget {
+  final int ink;
+  final int totalPoints;
+  final bool isDrawing;
+
+  const _InkDisplay({
+    required this.ink,
+    required this.totalPoints,
+    required this.isDrawing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: Row(
+        children: [
+          const Icon(Icons.water_drop, size: 20),
+          const SizedBox(width: 4),
+          Text(
+            isDrawing ? '${ink - totalPoints}' : '$ink',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UserAvatar extends StatelessWidget {
+  final bool isGuest;
+  final GoogleSignInAccount? user;
+  final VoidCallback? onTap;
+
+  const _UserAvatar({
+    required this.isGuest,
+    required this.user,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isGuest) {
+      return const Padding(
+        padding: EdgeInsets.all(8.0),
+        child: CircleAvatar(child: Icon(Icons.person_outline)),
+      );
+    }
+
+    if (user == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: GestureDetector(
+        onTap: onTap,
+        child: CircleAvatar(
+          backgroundImage:
+              user!.photoUrl != null ? NetworkImage(user!.photoUrl!) : null,
+          child: user!.photoUrl == null
+              ? Text(user!.displayName?[0] ?? 'U')
+              : null,
+        ),
+      ),
+    );
+  }
+}
+

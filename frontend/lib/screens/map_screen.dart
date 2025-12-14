@@ -5,8 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import '../services/google_auth_service.dart';
 import '../services/guest_service.dart';
 import '../services/user_service.dart';
-import '../widgets/color_picker_button.dart';
-import '../widgets/drawing_controls.dart';
+import '../widgets/map_app_bar.dart';
 import 'login_screen.dart';
 import 'change_artist_name_dialog.dart';
 import 'save_drawing_dialog.dart';
@@ -301,67 +300,21 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = _authService.currentUser;
-
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ColorPickerButton(
-              selectedColor: _selectedColor,
-              onColorChanged: _onColorChanged,
-            ),
-            const SizedBox(width: 8),
-            DrawingControls(
-              isDrawing: _isDrawing,
-              isPaused: _isPaused,
-              onStart: _startDrawing,
-              onTogglePause: _togglePause,
-              onStop: _stopDrawing,
-            ),
-          ],
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Row(
-              children: [
-                const Icon(Icons.water_drop, size: 20),
-                const SizedBox(width: 4),
-                Text(
-                  _isDrawing ? '${_ink - _getTotalPoints()}' : '$_ink',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ),
-          if (_isGuest)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: CircleAvatar(child: Icon(Icons.person_outline)),
-            )
-          else if (user != null)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: GestureDetector(
-                onTap: _showChangeArtistNameDialog,
-                child: CircleAvatar(
-                  backgroundImage: user.photoUrl != null
-                      ? NetworkImage(user.photoUrl!)
-                      : null,
-                  child: user.photoUrl == null
-                      ? Text(user.displayName?[0] ?? 'U')
-                      : null,
-                ),
-              ),
-            ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _handleSignOut,
-            tooltip: 'Sign out',
-          ),
-        ],
+      appBar: MapAppBar(
+        selectedColor: _selectedColor,
+        onColorChanged: _onColorChanged,
+        isDrawing: _isDrawing,
+        isPaused: _isPaused,
+        onStartDrawing: _startDrawing,
+        onTogglePause: _togglePause,
+        onStopDrawing: _stopDrawing,
+        ink: _ink,
+        totalPoints: _getTotalPoints(),
+        isGuest: _isGuest,
+        user: _authService.currentUser,
+        onUserAvatarTap: _showChangeArtistNameDialog,
+        onSignOut: _handleSignOut,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
