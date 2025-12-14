@@ -61,6 +61,12 @@ class _CommentsSectionState extends State<CommentsSection> {
   Future<void> _sendComment() async {
     final content = _commentController.text.trim();
     if (content.isEmpty) return;
+    if (content.length > 1000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Comment too long (max 1000 characters)')),
+      );
+      return;
+    }
 
     final userName = widget.service.currentUserName ?? 'You';
     final optimisticComment = Comment(
@@ -97,6 +103,8 @@ class _CommentsSectionState extends State<CommentsSection> {
                   ),
                   border: OutlineInputBorder(),
                 ),
+                maxLength: 1000,
+                maxLines: null,
               ),
             ),
             const SizedBox(width: 8),

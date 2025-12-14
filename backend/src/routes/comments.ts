@@ -86,16 +86,22 @@ router.post('/save', async (req: Request, res: Response) => {
     return
   }
 
+  const artistNameResult = await getPool().query(
+    `SELECT artist_name FROM "user".artist_name WHERE user_id = $1`,
+    [user.userId]
+  )
+  const artistName = artistNameResult.rows[0]?.artist_name ?? user.name
+
   const result = await getPool().query(
     `INSERT INTO drawings.comments (drawing_id, artist_name, content) VALUES ($1, $2, $3) RETURNING id, created_at`,
-    [drawingId, user.name, content]
+    [drawingId, artistName, content.trim()]
   )
 
   res.status(201).json({
     id: result.rows[0].id,
     drawingId,
-    artistName: user.name,
-    content,
+    artistName,
+    content: content.trim(),
     createdAt: result.rows[0].created_at
   })
 })

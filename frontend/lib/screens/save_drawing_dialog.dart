@@ -38,6 +38,7 @@ class _SaveDrawingDialogState extends State<SaveDrawingDialog> {
   bool _commentsEnabled = true;
   bool _isPublic = true;
   bool _isSaving = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -46,7 +47,20 @@ class _SaveDrawingDialogState extends State<SaveDrawingDialog> {
   }
 
   Future<void> _save() async {
-    setState(() => _isSaving = true);
+    final title = _nameController.text.trim();
+    if (title.isEmpty) {
+      setState(() => _errorMessage = 'Title is required');
+      return;
+    }
+    if (title.length > 200) {
+      setState(() => _errorMessage = 'Title too long (max 200 characters)');
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _errorMessage = null;
+    });
 
     if (widget.isGuest) {
       await _saveAsGuest();
@@ -63,16 +77,16 @@ class _SaveDrawingDialogState extends State<SaveDrawingDialog> {
 
     if (success) {
       if (mounted) {
-        Navigator.of(context).pop(
-          SaveDrawingResult(saved: true, inkRemaining: _guestService.ink),
-        );
+        Navigator.of(
+          context,
+        ).pop(SaveDrawingResult(saved: true, inkRemaining: _guestService.ink));
       }
     } else {
       setState(() => _isSaving = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Not enough ink!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Not enough ink!')));
       }
     }
   }
@@ -102,14 +116,14 @@ class _SaveDrawingDialogState extends State<SaveDrawingDialog> {
 
     if (response.statusCode == 201) {
       final data = jsonDecode(response.body);
-      Navigator.of(context).pop(
-        SaveDrawingResult(saved: true, inkRemaining: data['inkRemaining']),
-      );
+      Navigator.of(
+        context,
+      ).pop(SaveDrawingResult(saved: true, inkRemaining: data['inkRemaining']));
     } else if (response.statusCode == 400) {
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Not enough ink!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Not enough ink!')));
     } else {
       setState(() => _isSaving = false);
     }
@@ -147,12 +161,17 @@ class _SaveDrawingDialogState extends State<SaveDrawingDialog> {
         children: [
           TextField(
             controller: _nameController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Drawing Name',
               hintText: 'Enter a name for your drawing',
+              errorText: _errorMessage,
             ),
+            maxLength: 200,
             autofocus: true,
             enabled: !_isSaving,
+            onChanged: (_) {
+              if (_errorMessage != null) setState(() => _errorMessage = null);
+            },
           ),
           if (widget.isGuest) ...[
             const SizedBox(height: 8),
@@ -201,4 +220,3 @@ class _SaveDrawingDialogState extends State<SaveDrawingDialog> {
     );
   }
 }
-
