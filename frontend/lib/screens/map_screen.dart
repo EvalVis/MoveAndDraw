@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../services/google_auth_service.dart';
 import '../services/guest_service.dart';
+import '../services/user_service.dart';
 import 'login_screen.dart';
 import 'change_artist_name_dialog.dart';
 
@@ -24,6 +25,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _isLoading = true;
   final _authService = GoogleAuthService();
   final _guestService = GuestService();
+  final _userService = UserService();
   List<LatLng> _currentPathPoints = [];
   final Set<Polyline> _polylines = {};
   bool _isDrawing = false;
@@ -53,17 +55,9 @@ class _MapScreenState extends State<MapScreen> {
       setState(() => _artistName = 'Guest');
       return;
     }
-    final token = await _authService.getIdToken();
-    if (token == null) return;
-
-    final response = await http.post(
-      Uri.parse('${dotenv.env['BACKEND_URL']}/user/login'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      setState(() => _artistName = data['artistName']);
+    final artistName = await _userService.fetchArtistName();
+    if (artistName != null) {
+      setState(() => _artistName = artistName);
     }
   }
 
@@ -90,19 +84,9 @@ class _MapScreenState extends State<MapScreen> {
       setState(() => _ink = ink);
       return;
     }
-    final token = await _authService.getIdToken();
-    if (token == null) return;
-
-    final response = await http.get(
-      Uri.parse('${dotenv.env['BACKEND_URL']}/user/ink'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      setState(() {
-        _ink = data['ink'];
-      });
+    final ink = await _userService.fetchInk();
+    if (ink != null) {
+      setState(() => _ink = ink);
     }
   }
 
@@ -296,7 +280,9 @@ class _MapScreenState extends State<MapScreen> {
                         context: context,
                         builder: (context) => AlertDialog(
                           title: const Text('Discard Drawing?'),
-                          content: const Text('Are you sure? Your drawing will be discarded.'),
+                          content: const Text(
+                            'Are you sure? Your drawing will be discarded.',
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(false),
@@ -318,7 +304,7 @@ class _MapScreenState extends State<MapScreen> {
                   ElevatedButton(
                     onPressed: () async {
                       setDialogState(() => isSaving = true);
-                      
+
                       final segments = <Map<String, dynamic>>[];
                       for (final polyline in _polylines) {
                         final points = polyline.points
@@ -384,21 +370,25 @@ class _MapScreenState extends State<MapScreen> {
                     title: const Text('Public'),
                     subtitle: const Text('Visible to everyone'),
                     value: isPublic,
-                    onChanged: isSaving ? null : (value) {
-                      setDialogState(() {
-                        isPublic = value ?? true;
-                      });
-                    },
+                    onChanged: isSaving
+                        ? null
+                        : (value) {
+                            setDialogState(() {
+                              isPublic = value ?? true;
+                            });
+                          },
                     contentPadding: EdgeInsets.zero,
                   ),
                   CheckboxListTile(
                     title: const Text('Allow comments'),
                     value: commentsEnabled,
-                    onChanged: isSaving ? null : (value) {
-                      setDialogState(() {
-                        commentsEnabled = value ?? true;
-                      });
-                    },
+                    onChanged: isSaving
+                        ? null
+                        : (value) {
+                            setDialogState(() {
+                              commentsEnabled = value ?? true;
+                            });
+                          },
                     contentPadding: EdgeInsets.zero,
                   ),
                 ],
@@ -416,14 +406,18 @@ class _MapScreenState extends State<MapScreen> {
                             context: context,
                             builder: (context) => AlertDialog(
                               title: const Text('Discard Drawing?'),
-                              content: const Text('Are you sure? Your drawing will be discarded.'),
+                              content: const Text(
+                                'Are you sure? Your drawing will be discarded.',
+                              ),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.of(context).pop(false),
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(false),
                                   child: const Text('No'),
                                 ),
                                 TextButton(
-                                  onPressed: () => Navigator.of(context).pop(true),
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(true),
                                   child: const Text('Yes'),
                                 ),
                               ],
@@ -438,7 +432,7 @@ class _MapScreenState extends State<MapScreen> {
                       ElevatedButton(
                         onPressed: () async {
                           setDialogState(() => isSaving = true);
-                          
+
                           final token = await _authService.getIdToken();
                           if (token == null) {
                             setDialogState(() => isSaving = false);
@@ -455,7 +449,9 @@ class _MapScreenState extends State<MapScreen> {
                             segments.add({'points': points, 'color': colorHex});
                           }
                           final response = await http.post(
-                            Uri.parse('${dotenv.env['BACKEND_URL']}/drawings/save'),
+                            Uri.parse(
+                              '${dotenv.env['BACKEND_URL']}/drawings/save',
+                            ),
                             headers: {
                               'Content-Type': 'application/json',
                               'Authorization': 'Bearer $token',
@@ -472,12 +468,15 @@ class _MapScreenState extends State<MapScreen> {
                             setState(() {
                               _ink = data['inkRemaining'];
                             });
-                            if (context.mounted) Navigator.of(context).pop(true);
+                            if (context.mounted)
+                              Navigator.of(context).pop(true);
                           } else if (response.statusCode == 400) {
                             setDialogState(() => isSaving = false);
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Not enough ink!')),
+                                const SnackBar(
+                                  content: Text('Not enough ink!'),
+                                ),
                               );
                             }
                           } else {
