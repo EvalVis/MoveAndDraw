@@ -42,14 +42,14 @@ class _BrushSizePickerState extends State<BrushSizePicker> {
             ),
           ),
           Positioned(
-            left: position.dx - 20,
+            left: 8,
+            right: 8,
             top: position.dy + size.height + 8,
             child: Material(
               elevation: 4,
               borderRadius: BorderRadius.circular(8),
               child: Container(
                 padding: const EdgeInsets.all(12),
-                width: 200,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
