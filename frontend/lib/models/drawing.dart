@@ -16,7 +16,10 @@ class DrawingSegment {
         .map<LatLng>((c) => LatLng(c[1].toDouble(), c[0].toDouble()))
         .toList();
     final colorHex = json['color'] as String;
-    final colorValue = int.parse(colorHex.substring(1), radix: 16) + 0xFF000000;
+    final hexValue = colorHex.substring(1);
+    final colorValue = hexValue.length == 8
+        ? int.parse(hexValue, radix: 16)
+        : int.parse(hexValue, radix: 16) + 0xFF000000;
     return DrawingSegment(points: points, color: Color(colorValue));
   }
 }

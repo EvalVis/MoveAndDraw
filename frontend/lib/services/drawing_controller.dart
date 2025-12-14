@@ -111,7 +111,7 @@ class DrawingController extends ChangeNotifier {
           .map((p) => [p.longitude, p.latitude])
           .toList();
       final colorHex =
-          '#${polyline.color.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
+          '#${polyline.color.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
       segments.add({'points': points, 'color': colorHex});
     }
     return segments;
