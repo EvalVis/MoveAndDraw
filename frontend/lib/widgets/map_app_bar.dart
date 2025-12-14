@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'color_picker_button.dart';
 import 'drawing_controls.dart';
+import 'sign_out_button.dart';
 
 class MapAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color selectedColor;
@@ -16,7 +17,6 @@ class MapAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool isGuest;
   final GoogleSignInAccount? user;
   final VoidCallback? onUserAvatarTap;
-  final VoidCallback onSignOut;
 
   const MapAppBar({
     super.key,
@@ -32,7 +32,6 @@ class MapAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.isGuest,
     required this.user,
     required this.onUserAvatarTap,
-    required this.onSignOut,
   });
 
   @override
@@ -65,11 +64,7 @@ class MapAppBar extends StatelessWidget implements PreferredSizeWidget {
           user: user,
           onTap: onUserAvatarTap,
         ),
-        IconButton(
-          icon: const Icon(Icons.logout),
-          onPressed: onSignOut,
-          tooltip: 'Sign out',
-        ),
+        SignOutButton(isGuest: isGuest),
       ],
     );
   }

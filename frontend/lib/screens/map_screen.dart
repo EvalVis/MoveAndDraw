@@ -6,7 +6,6 @@ import '../services/google_auth_service.dart';
 import '../services/guest_service.dart';
 import '../services/user_service.dart';
 import '../widgets/map_app_bar.dart';
-import 'login_screen.dart';
 import 'change_artist_name_dialog.dart';
 import 'save_drawing_dialog.dart';
 
@@ -286,18 +285,6 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  Future<void> _handleSignOut() async {
-    if (_isGuest) {
-      await _guestService.exitGuestMode();
-    } else {
-      await _authService.signOut();
-    }
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -314,7 +301,6 @@ class _MapScreenState extends State<MapScreen> {
         isGuest: _isGuest,
         user: _authService.currentUser,
         onUserAvatarTap: _showChangeArtistNameDialog,
-        onSignOut: _handleSignOut,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
