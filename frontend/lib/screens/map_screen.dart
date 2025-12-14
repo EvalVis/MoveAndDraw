@@ -2,10 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../services/google_auth_service.dart';
 import '../services/guest_service.dart';
 import '../services/user_service.dart';
+import '../widgets/color_picker_button.dart';
+import '../widgets/drawing_controls.dart';
 import 'login_screen.dart';
 import 'change_artist_name_dialog.dart';
 import 'save_drawing_dialog.dart';
@@ -275,38 +276,15 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  void _showColorPicker() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Pick a color'),
-          content: SingleChildScrollView(
-            child: ColorPicker(
-              pickerColor: _selectedColor,
-              onColorChanged: (Color color) {
-                setState(() {
-                  _selectedColor = color;
-                  if (_isDrawing && _currentPathPoints.length >= 2) {
-                    _finalizeCurrentSegment();
-                  } else if (_isDrawing) {
-                    _currentSegmentColor = color;
-                  }
-                });
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: const Text('Done'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
+  void _onColorChanged(Color color) {
+    setState(() {
+      _selectedColor = color;
+      if (_isDrawing && _currentPathPoints.length >= 2) {
+        _finalizeCurrentSegment();
+      } else if (_isDrawing) {
+        _currentSegmentColor = color;
+      }
+    });
   }
 
   Future<void> _handleSignOut() async {
@@ -330,51 +308,18 @@ class _MapScreenState extends State<MapScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: _selectedColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-              ),
-              onPressed: _showColorPicker,
-              tooltip: 'Pick color',
+            ColorPickerButton(
+              selectedColor: _selectedColor,
+              onColorChanged: _onColorChanged,
             ),
             const SizedBox(width: 8),
-            if (!_isDrawing)
-              IconButton(
-                onPressed: _startDrawing,
-                icon: const Icon(Icons.play_arrow),
-                tooltip: 'Start Drawing',
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                ),
-              )
-            else ...[
-              IconButton(
-                onPressed: _togglePause,
-                icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause),
-                tooltip: _isPaused ? 'Continue' : 'Pause',
-                style: IconButton.styleFrom(
-                  backgroundColor: _isPaused ? Colors.green : Colors.orange,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 4),
-              IconButton(
-                onPressed: _stopDrawing,
-                icon: const Icon(Icons.stop),
-                tooltip: 'Stop',
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
+            DrawingControls(
+              isDrawing: _isDrawing,
+              isPaused: _isPaused,
+              onStart: _startDrawing,
+              onTogglePause: _togglePause,
+              onStop: _stopDrawing,
+            ),
           ],
         ),
         actions: [
