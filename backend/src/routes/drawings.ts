@@ -63,6 +63,12 @@ router.post('/save', async (req: Request, res: Response) => {
 
   const { title, segments, commentsEnabled, isPublic } = req.body as SaveDrawingBody
 
+  const hasValidSegments = segments.some(seg => seg.points.length >= 2)
+  if (!hasValidSegments) {
+    res.status(400).json({ error: 'Drawing must have at least one segment with 2 or more points' })
+    return
+  }
+
   const totalPoints = segments.reduce((sum, seg) => sum + seg.points.length, 0)
 
   const inkResult = await getPool().query(

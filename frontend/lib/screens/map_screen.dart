@@ -9,6 +9,7 @@ import '../services/location_service.dart';
 import '../services/drawing_controller.dart';
 import '../services/ink_service.dart';
 import '../widgets/map_app_bar.dart';
+import '../widgets/no_drawing_dialog.dart';
 import 'change_artist_name_dialog.dart';
 import 'save_drawing_dialog.dart';
 
@@ -114,12 +115,23 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _showSaveDrawingDialog() {
+    final segments = _drawingController.toSegments();
+    final hasPoints = segments.any((s) => (s['points'] as List).length >= 2);
+
+    if (!hasPoints) {
+      showDialog(
+        context: context,
+        builder: (context) => const NoDrawingDialog(),
+      ).then((_) {
+        _drawingController.handleSaveResult(saved: false, discarded: true);
+      });
+      return;
+    }
+
     showDialog<SaveDrawingResult>(
       context: context,
-      builder: (context) => SaveDrawingDialog(
-        segments: _drawingController.toSegments(),
-        isGuest: _isGuest,
-      ),
+      builder: (context) =>
+          SaveDrawingDialog(segments: segments, isGuest: _isGuest),
     ).then((result) {
       if (result?.inkRemaining != null) {
         setState(() => _ink = result!.inkRemaining!);
