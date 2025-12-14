@@ -46,3 +46,4 @@ app.*.map.json
 
 # environment variables
 .env
+.env.production

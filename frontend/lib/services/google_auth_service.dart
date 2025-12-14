@@ -1,5 +1,6 @@
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart';
 
 class GoogleAuthService {
   static final GoogleAuthService _instance = GoogleAuthService._internal();
@@ -11,7 +12,8 @@ class GoogleAuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
   Future<void> initialize() async {
-    await dotenv.load();
+    final envFile = kReleaseMode ? '.env.production' : '.env';
+    await dotenv.load(fileName: envFile);
     final serverClientId = dotenv.env['GOOGLE_OAUTH2_SERVER_CLIENT_ID'];
     await _googleSignIn.initialize(serverClientId: serverClientId);
   }
