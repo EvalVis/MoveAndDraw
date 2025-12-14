@@ -45,11 +45,15 @@ class GoogleAuthService {
   bool get isSignedIn => _currentUser != null;
 
   Future<String?> getIdToken() async {
-    if (_currentUser == null) {
-      await signInSilently();
+    var account = await _googleSignIn.attemptLightweightAuthentication();
+    if (account == null) {
+      try {
+        account = await _googleSignIn.authenticate();
+      } catch (e) {
+        return null;
+      }
     }
-    if (_currentUser == null) return null;
-    final authentication = _currentUser!.authentication;
-    return authentication.idToken;
+    _currentUser = account;
+    return account.authentication.idToken;
   }
 }
