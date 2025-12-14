@@ -48,7 +48,7 @@ class _DrawingMapState extends State<DrawingMap> {
       scrollGesturesEnabled: false,
       rotateGesturesEnabled: false,
       tiltGesturesEnabled: false,
-      zoomGesturesEnabled: true,
+      zoomGesturesEnabled: false,
       myLocationButtonEnabled: false,
       mapToolbarEnabled: false,
     );
