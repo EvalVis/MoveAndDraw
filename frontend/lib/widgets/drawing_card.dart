@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/drawing.dart';
+import '../screens/drawing_fullscreen.dart';
 import '../services/drawings_service.dart';
 import 'drawing_map.dart';
 import 'comments_section.dart';
@@ -31,6 +32,14 @@ class _DrawingCardState extends State<DrawingCard> {
     setState(() => _showComments = !_showComments);
   }
 
+  void _openFullscreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => DrawingFullscreen(drawing: widget.drawing),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -39,7 +48,31 @@ class _DrawingCardState extends State<DrawingCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 200, child: DrawingMap(drawing: widget.drawing)),
+          Stack(
+            children: [
+              SizedBox(height: 200, child: DrawingMap(drawing: widget.drawing)),
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Material(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(4),
+                  child: InkWell(
+                    onTap: _openFullscreen,
+                    borderRadius: BorderRadius.circular(4),
+                    child: const Padding(
+                      padding: EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.fullscreen,
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
