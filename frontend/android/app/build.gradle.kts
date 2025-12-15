@@ -15,6 +15,14 @@ if (envFile.exists()) {
     }
 }
 
+val keyProperties = Properties()
+val keyPropertiesFile = File(rootProject.projectDir, "key.properties")
+if (keyPropertiesFile.exists()) {
+    keyPropertiesFile.reader(Charsets.UTF_8).use { reader ->
+        keyProperties.load(reader)
+    }
+}
+
 val googleMapsApiKey = localProperties.getProperty("GOOGLE_MAPS_API_KEY") ?: ""
 
 android {
@@ -40,9 +48,32 @@ android {
         manifestPlaceholders["googleMapsApiKey"] = googleMapsApiKey
     }
 
+    signingConfigs {
+        create("release") {
+            val keyAliasProp = keyProperties.getProperty("keyAlias")
+            val keyPasswordProp = keyProperties.getProperty("keyPassword")
+            val storeFileProp = keyProperties.getProperty("storeFile")
+            val storePasswordProp = keyProperties.getProperty("storePassword")
+            
+            if (keyAliasProp != null && keyPasswordProp != null && storeFileProp != null && storePasswordProp != null) {
+                keyAlias = keyAliasProp
+                keyPassword = keyPasswordProp
+                storeFile = File(rootProject.projectDir, storeFileProp)
+                storePassword = storePasswordProp
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            val keyAliasProp = keyProperties.getProperty("keyAlias")
+            val keyPasswordProp = keyProperties.getProperty("keyPassword")
+            val storeFileProp = keyProperties.getProperty("storeFile")
+            val storePasswordProp = keyProperties.getProperty("storePassword")
+            
+            if (keyAliasProp != null && keyPasswordProp != null && storeFileProp != null && storePasswordProp != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }
