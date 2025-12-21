@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class LocationService {
   StreamSubscription<Position>? _positionSubscription;
@@ -24,7 +25,39 @@ class LocationService {
     );
   }
 
-  void startTracking() {
+  Future<bool> requestBackgroundLocationPermission() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return false;
+    }
+
+    if (permission == LocationPermission.whileInUse) {
+      final backgroundStatus = await Permission.locationAlways.request();
+      if (backgroundStatus.isGranted) {
+        return true;
+      }
+
+      if (backgroundStatus.isPermanentlyDenied) {
+        await openAppSettings();
+        return false;
+      }
+    }
+
+    if (permission == LocationPermission.always) {
+      return true;
+    }
+
+    return false;
+  }
+
+  Future<bool> checkBackgroundLocationPermission() async {
+    final status = await Permission.locationAlways.status;
+    return status.isGranted;
+  }
+
+  void startTracking({bool background = false}) {
     _positionSubscription =
         Geolocator.getPositionStream(
           locationSettings: const LocationSettings(

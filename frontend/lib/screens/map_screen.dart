@@ -10,6 +10,7 @@ import '../services/drawing_controller.dart';
 import '../services/ink_service.dart';
 import '../widgets/map_app_bar.dart';
 import '../widgets/no_drawing_dialog.dart';
+import '../widgets/background_location_dialog.dart';
 import 'change_artist_name_dialog.dart';
 import 'save_drawing_dialog.dart';
 
@@ -67,13 +68,27 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    _locationService.startTracking();
+    final hasBackgroundPermission =
+        await _locationService.checkBackgroundLocationPermission();
+    if (!hasBackgroundPermission && mounted) {
+      final shouldRequest = await showDialog<bool>(
+        context: context,
+        builder: (context) => const BackgroundLocationDialog(),
+      );
+      if (shouldRequest == true && mounted) {
+        await _locationService.requestBackgroundLocationPermission();
+      }
+    }
+
+    _locationService.startTracking(background: true);
     _positionSubscription = _locationService.positionStream.listen((position) {
-      setState(() => _currentPosition = position);
-      if (_drawingController.isDrawing && !_drawingController.isPaused) {
-        _drawingController.addPoint(
-          LatLng(position.latitude, position.longitude),
-        );
+      if (mounted) {
+        setState(() => _currentPosition = position);
+        if (_drawingController.isDrawing && !_drawingController.isPaused) {
+          _drawingController.addPoint(
+            LatLng(position.latitude, position.longitude),
+          );
+        }
       }
     });
   }
