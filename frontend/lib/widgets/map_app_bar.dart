@@ -4,6 +4,7 @@ import 'brush_size_picker.dart';
 import 'color_picker_button.dart';
 import 'drawing_controls.dart';
 import 'sign_out_button.dart';
+import 'help_dialog.dart';
 
 class MapAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color selectedColor;
@@ -45,6 +46,8 @@ class MapAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
+      titleSpacing: 0,
+      toolbarHeight: kToolbarHeight,
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -56,7 +59,7 @@ class MapAppBar extends StatelessWidget implements PreferredSizeWidget {
             selectedSize: selectedBrushSize,
             onSizeChanged: onBrushSizeChanged,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           DrawingControls(
             isDrawing: isDrawing,
             isPaused: isPaused,
@@ -68,6 +71,18 @@ class MapAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         _InkDisplay(ink: ink, totalPoints: totalPoints, isDrawing: isDrawing),
+        IconButton(
+          icon: const Icon(Icons.help_outline, size: 20),
+          padding: const EdgeInsets.all(8),
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) => const HelpDialog(),
+            );
+          },
+          tooltip: 'Help',
+        ),
         _UserAvatar(isGuest: isGuest, user: user, onTap: onUserAvatarTap),
         SignOutButton(isGuest: isGuest),
       ],
@@ -89,14 +104,15 @@ class _InkDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 2.0),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.water_drop, size: 15),
-          const SizedBox(width: 3),
+          const Icon(Icons.water_drop, size: 14),
+          const SizedBox(width: 2),
           Text(
             isDrawing ? '${ink - totalPoints}' : '$ink',
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
           ),
         ],
       ),
@@ -119,7 +135,7 @@ class _UserAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isGuest) {
       return const Padding(
-        padding: EdgeInsets.all(4.0),
+        padding: EdgeInsets.all(3.0),
         child: CircleAvatar(child: Icon(Icons.person_outline)),
       );
     }
@@ -127,7 +143,7 @@ class _UserAvatar extends StatelessWidget {
     if (user == null) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(5.0),
       child: GestureDetector(
         onTap: onTap,
         child: CircleAvatar(
