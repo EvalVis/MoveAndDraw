@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -29,10 +30,28 @@ class _LoginScreenState extends State<LoginScreen> {
     if (user != null) {
       final token = await _authService.getIdToken();
       if (token != null) {
-        await http.post(
-          Uri.parse('${dotenv.env['BACKEND_URL']}/user/login'),
-          headers: {'Authorization': 'Bearer $token'},
+        if (!mounted) return;
+        showGeneralDialog(
+          context: context,
+          barrierDismissible: false,
+          barrierColor: Colors.black54,
+          transitionDuration: Duration.zero,
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const _LoginOverlay(),
         );
+
+        try {
+          await http
+              .post(
+                Uri.parse('${dotenv.env['BACKEND_URL']}/user/login'),
+                headers: {'Authorization': 'Bearer $token'},
+              )
+              .timeout(const Duration(seconds: 30));
+        } finally {
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        }
       }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -145,6 +164,27 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoginOverlay extends StatelessWidget {
+  const _LoginOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: const Center(
+          child: SizedBox(
+            width: 120,
+            height: 120,
+            child: CircularProgressIndicator(strokeWidth: 20),
           ),
         ),
       ),
